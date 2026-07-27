@@ -1,0 +1,17 @@
+# 執行檔
+bin/
+*.exe
+*.test
+*.out
+
+# 覆蓋率
+coverage.txt
+*.cover
+
+# 編輯器
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
