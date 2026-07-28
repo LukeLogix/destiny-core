@@ -7,12 +7,15 @@ on:
 
 jobs:
   test:
-    # 由 repo variable CI_RUNNER 決定跑在哪，與 msgmesh-platform 同一慣例；
-    # 未設定時退回 ubuntu-latest，方便 fork 的人不必先架 runner。
-    # 目前值：["self-hosted","pve-ci"] → PVE CT109 上的 pve-ci-destiny。
+    # ⚠️ 本 repo 是 public，pull_request 一律走 GitHub 託管 runner。
     #
-    # 標籤要寫到 pve-ci 而非只寫 self-hosted：CT106 也有一台帶 self-hosted 的 runner。
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["ubuntu-latest"]') }}
+    # self-hosted runner 位於家用內網，而 public repo 的 fork PR 等同讓任意人
+    # 在該機器上執行程式碼——同一台 pve-ci 還放著其他 repo 的工作目錄。
+    # public repo 無法設定 fork PR 的核准政策（API 回 422），故只能從 runs-on 隔離。
+    #
+    # push 到 main 才用自架 runner，由 repo variable CI_RUNNER 決定（同 msgmesh-platform 慣例），
+    # 未設定時退回 ubuntu-latest。目前值：["self-hosted","pve-ci"] → CT109 的 pve-ci-destiny。
+    runs-on: ${{ github.event_name == 'push' && fromJSON(vars.CI_RUNNER || '["ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
 
