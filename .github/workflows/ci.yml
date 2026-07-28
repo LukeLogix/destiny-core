@@ -7,15 +7,17 @@ on:
 
 jobs:
   test:
-    # 跑在 pve-ci（PVE CT109）上的自架 runner。
+    # 由 repo variable CI_RUNNER 決定跑在哪，與 msgmesh-platform 同一慣例；
+    # 未設定時退回 ubuntu-latest，方便 fork 的人不必先架 runner。
+    # 目前值：["self-hosted","pve-ci"] → PVE CT109 上的 pve-ci-destiny。
     #
-    # 指定 pve-ci 標籤而非只寫 self-hosted：GitHub 個人帳號的 runner 只能綁在
-    # repo 層級，各 repo 各自註冊；標籤寫精確才不會在日後多台時排到錯的機器。
-    runs-on: [self-hosted, pve-ci]
+    # 標籤要寫到 pve-ci 而非只寫 self-hosted：CT106 也有一台帶 self-hosted 的 runner。
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
 
-      # pve-ci 上未預裝 Go，這一步必要（實測會下載 Go 1.25）。
+      # pve-ci 沒有系統層級的 Go，靠這步取得；首次執行後會留在 runner 的
+      # tool cache（_work/_tool/go/），之後近乎零成本。與 msgmesh-platform 一致。
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
