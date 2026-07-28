@@ -17,6 +17,21 @@ jobs:
     # 未設定時退回 ubuntu-latest。目前值：["self-hosted","pve-ci"] → CT109 的 pve-ci-destiny。
     runs-on: ${{ github.event_name == 'push' && fromJSON(vars.CI_RUNNER || '["ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
     steps:
+      # CI_RUNNER 是 repo variable，不在 git 裡——repo 重建或誤刪時
+      # runs-on 會靜靜回落到 ubuntu-latest，CI 照樣全綠、額度繼續燒。
+      # 這一步讓那種漂移變成紅燈而不是無聲。
+      #
+      # 刻意只比對前綴、不印出任何主機或網路資訊：本 repo 是 public，
+      # Actions 日誌任何人可讀，workflow 裡絕不可出現 env / hostname -I /
+      # ip addr / docker info 這類會把內網位址寫進公開日誌的指令。
+      - name: 確認跑在預期的 runner 上
+        if: github.event_name == 'push'
+        run: |
+          case "$RUNNER_NAME" in
+            pve-ci*) echo "✅ 自架 runner" ;;
+            *) echo "❌ 預期自架 runner，實際並非——CI_RUNNER variable 可能已遺失"; exit 1 ;;
+          esac
+
       - uses: actions/checkout@v4
 
       # pve-ci 沒有系統層級的 Go，靠這步取得；首次執行後會留在 runner 的
