@@ -83,6 +83,9 @@ type Options struct {
 
 	// 干支關係
 	Relation ganzhi.RelationOptions
+
+	// 旺衰策略。nil 時用預設的兩套——兩者判定不一致本身即為有用訊號。
+	Strengths []Strength
 }
 
 // Default 主流口徑：早子時換日、鐘面時間、標準藏干、陰干逆行。

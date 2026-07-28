@@ -78,10 +78,10 @@ func Compute(b Birth, opt Options) (*Chart, error) {
 		return nil, fmt.Errorf("bazi: 時柱組合失敗: %w", err)
 	}
 
-	c.Year = makePillar(yearSex, dayStem, opt.HiddenStem)
-	c.Month = makePillar(monthSex, dayStem, opt.HiddenStem)
-	c.Day = makePillar(daySex, dayStem, opt.HiddenStem)
-	c.Hour = makePillar(hourSex, dayStem, opt.HiddenStem)
+	c.Year = makePillar(yearSex, dayStem, opt)
+	c.Month = makePillar(monthSex, dayStem, opt)
+	c.Day = makePillar(daySex, dayStem, opt)
+	c.Hour = makePillar(hourSex, dayStem, opt)
 
 	// --- 干支關係 ---
 	c.Relations = append(
@@ -92,17 +92,32 @@ func Compute(b Birth, opt Options) (*Chart, error) {
 	// --- 臨界標記 ---
 	c.Boundary = boundaryFlags(effective, jd, gzYear)
 
+	// --- 大運與流年 ---
+	c.Fortunes = computeFortunes(c, jd, gzYear)
+
+	// --- 旺衰：預設同時跑兩套策略，判定不一致本身即為訊號 ---
+	strategies := opt.Strengths
+	if strategies == nil {
+		strategies = []Strength{DefaultWeighted(), ClassicalStrength{}}
+	}
+	in := StrengthInput{Pillars: c.Pillars()}
+	for _, s := range strategies {
+		c.Strengths = append(c.Strengths, s.Evaluate(in))
+	}
+
 	return c, nil
 }
 
-func makePillar(sex ganzhi.SexagenaryIndex, dayMaster ganzhi.StemIndex, sect HiddenStemSect) Pillar {
+func makePillar(sex ganzhi.SexagenaryIndex, dayMaster ganzhi.StemIndex, opt Options) Pillar {
 	stem, branch := sex.Stem(), sex.Branch()
 	return Pillar{
 		Sexagenary: sex,
 		Stem:       stem,
 		Branch:     branch,
 		StemTenGod: TenGodOf(dayMaster, stem),
-		Hidden:     HiddenTenGods(branch, dayMaster, sect),
+		Hidden:     HiddenTenGods(branch, dayMaster, opt.HiddenStem),
+		Terrain:    TerrainOf(dayMaster, branch, opt.Terrain),
+		Sound:      SoundOf(sex),
 	}
 }
 

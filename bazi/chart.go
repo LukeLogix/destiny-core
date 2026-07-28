@@ -13,6 +13,8 @@ type Pillar struct {
 	Branch     ganzhi.BranchIndex
 	StemTenGod TenGod         // 天干對日主的十神；日柱為比肩（日主對自身）
 	Hidden     []HiddenTenGod // 地支藏干及各自十神
+	Terrain    Terrain        // 日主在此柱地支的十二長生狀態
+	Sound      SoundIndex     // 納音
 }
 
 // BoundaryFlags 臨界標記。
@@ -38,8 +40,11 @@ type Chart struct {
 
 	Year, Month, Day, Hour Pillar
 
-	Relations []ganzhi.Relation // 沖刑合會，只報構成不判定化成
-	Boundary  BoundaryFlags
+	Relations    []ganzhi.Relation // 沖刑合會，只報構成不判定化成
+	Boundary     BoundaryFlags
+	Fortunes     []DecadeFortune // 大運，每步含其涵蓋的流年
+	FortuneStart time.Time       // 起運時刻，四種流派可差達一整天，故明列供稽核
+	Strengths    []StrengthResult
 }
 
 // DayMaster 日主，即日柱天干——十神皆以此為參照。
