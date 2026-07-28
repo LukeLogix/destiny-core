@@ -102,7 +102,10 @@ func TestSolarTermAgainstJPL(t *testing.T) {
 func TestSolarTermByEra(t *testing.T) {
 	f := loadFixture(t)
 
-	type stat struct{ n int; sum, max float64 }
+	type stat struct {
+		n        int
+		sum, max float64
+	}
 	eras := map[int]*stat{}
 
 	for _, term := range f.Terms {
