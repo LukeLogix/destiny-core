@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -284,8 +285,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "序列化失敗：%v\n", err)
 		os.Exit(1)
 	}
-	if err := os.MkdirAll(strings.TrimSuffix(*out, "/"+filepathBase(*out)), 0755); err != nil && !os.IsExist(err) {
-		fmt.Fprintf(os.Stderr, "建立目錄失敗：%v\n", err)
+	if dir := filepath.Dir(*out); dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil && !os.IsExist(err) {
+			fmt.Fprintf(os.Stderr, "建立目錄失敗：%v\n", err)
+		}
 	}
 	if err := os.WriteFile(*out, buf, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "寫檔失敗：%v\n", err)
@@ -293,11 +296,4 @@ func main() {
 	}
 	fmt.Printf("已寫出 %s\n  節氣 %d 筆，失敗 %d 筆\n  tyme4go 相對 JPL 最大偏差 %.1f 秒\n",
 		*out, len(terms), failed, maxDelta)
-}
-
-func filepathBase(p string) string {
-	if i := strings.LastIndex(p, "/"); i >= 0 {
-		return p[i+1:]
-	}
-	return p
 }

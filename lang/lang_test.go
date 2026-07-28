@@ -238,3 +238,83 @@ func TestOutOfRangeIndexDoesNotPanic(t *testing.T) {
 	_ = b.TenGod(bazi.TenGod(200))
 	_ = b.Sound(bazi.SoundIndex(200))
 }
+
+// TestLocalizeIncludesRelations 干支關係須進入本地化輸出。
+//
+// 少了它，餵給 LLM 的 JSON 會讓 AI 以為此盤沒有任何沖刑合會，
+// 與 README 所承諾的計算範圍相違。
+func TestLocalizeIncludesRelations(t *testing.T) {
+	c := sampleChart(t)
+	lc := Localize(c, ZhTW)
+
+	if len(c.Relations) == 0 {
+		t.Fatal("此命例應有干支關係可測（乙庚合金、巳酉半合）")
+	}
+	if len(lc.Relations) != len(c.Relations) {
+		t.Fatalf("本地化後有 %d 組關係，命盤有 %d 組", len(lc.Relations), len(c.Relations))
+	}
+	for _, r := range lc.Relations {
+		if r.Kind == "" {
+			t.Error("關係種類未本地化")
+		}
+		if len(r.Pillars) == 0 {
+			t.Error("關係未標明涉及哪幾柱")
+		}
+	}
+
+	// 乙庚合金：年干庚與日干乙
+	var found bool
+	for _, r := range lc.Relations {
+		if r.Kind == "天干五合" && r.Transform == "金" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("應含乙庚合金，實得 %+v", lc.Relations)
+	}
+}
+
+// TestLocalizeRelationPillarNames 關係的位置須譯為年月日時，
+// 而非直接透出 ganzhi 的 slice 索引。
+func TestLocalizeRelationPillarNames(t *testing.T) {
+	c := sampleChart(t)
+	lc := Localize(c, ZhTW)
+
+	valid := map[string]bool{"年": true, "月": true, "日": true, "時": true}
+	for _, r := range lc.Relations {
+		for _, p := range r.Pillars {
+			if !valid[p] {
+				t.Errorf("柱位名稱 %q 不在年月日時之內", p)
+			}
+		}
+	}
+}
+
+// TestLocalizeIncludesAuditFields 稽核所需的欄位不得在本地化時被丟棄。
+func TestLocalizeIncludesAuditFields(t *testing.T) {
+	c := sampleChart(t)
+	lc := Localize(c, ZhTW)
+
+	if lc.EffectiveTime == "" {
+		t.Error("缺實際推算時刻")
+	}
+	if lc.Boundary == nil {
+		t.Fatal("缺臨界數值")
+	}
+	if lc.Boundary.NearTermSeconds != c.Boundary.NearTermSeconds {
+		t.Errorf("距節秒數為 %v，應為 %v",
+			lc.Boundary.NearTermSeconds, c.Boundary.NearTermSeconds)
+	}
+	if lc.Boundary.TermUncertaintySec != c.Boundary.TermUncertaintySec {
+		t.Error("不確定度未轉出")
+	}
+	if lc.Options == nil {
+		t.Fatal("缺口徑記錄——命盤的可重現性靠它")
+	}
+	if lc.Options.LateZiKeepsDay != c.Options.LateZiKeepsDay {
+		t.Error("子時口徑未轉出")
+	}
+	if lc.Options.SolarTime == "" {
+		t.Error("真太陽時口徑未轉出")
+	}
+}

@@ -2,6 +2,7 @@ package lang
 
 import (
 	"github.com/LukeLogix/destiny-core/bazi"
+	"github.com/LukeLogix/destiny-core/ganzhi"
 )
 
 // LocalizedHiddenStem 藏干的文字形式
@@ -50,6 +51,37 @@ type LocalizedFortune struct {
 	Years      []LocalizedAnnualYear `json:"years"`
 }
 
+// LocalizedRelation 干支關係的文字形式
+type LocalizedRelation struct {
+	Kind    string   `json:"kind"`
+	Pillars []string `json:"pillars"`
+	// Transform 僅合會類有值，且語意為「若化則化為此五行」而非「已化」——
+	// 化與不化取決於得令、引化之神、是否被沖破，各家分歧極大，核心不作此判定。
+	Transform string `json:"transform,omitempty"`
+}
+
+// LocalizedBoundary 臨界數值。除了人看的警示文字，數值本身也要交出，
+// 上層才能自行決定門檻。
+type LocalizedBoundary struct {
+	NearTermSeconds    float64 `json:"near_term_seconds"`
+	NearHourSeconds    float64 `json:"near_hour_seconds"`
+	TermUncertaintySec float64 `json:"term_uncertainty_seconds"`
+	TermCritical       bool    `json:"term_critical"`
+	HourCritical       bool    `json:"hour_critical"`
+}
+
+// LocalizedOptions 排盤所用口徑。命盤的可重現性靠它，
+// 故不得在序列化時被丟棄。
+type LocalizedOptions struct {
+	LateZiKeepsDay bool   `json:"late_zi_keeps_day"`
+	SolarTime      string `json:"solar_time"`
+	HiddenStemSect uint8  `json:"hidden_stem_sect"`
+	TerrainSect    uint8  `json:"terrain_sect"`
+	ChildLimitSect uint8  `json:"child_limit_sect"`
+	HalfTrinity    bool   `json:"include_half_trinity"`
+	Destruction    bool   `json:"include_destruction"`
+}
+
 // LocalizedChart 可直接序列化給前端或 LLM 的命盤。
 type LocalizedChart struct {
 	Locale    string `json:"locale"`
@@ -65,6 +97,14 @@ type LocalizedChart struct {
 
 	Strengths []LocalizedStrength `json:"strengths"`
 	Consensus string              `json:"consensus"`
+
+	Relations []LocalizedRelation `json:"relations"`
+
+	// 稽核用欄位
+	EffectiveTime   string             `json:"effective_time"`
+	SolarTimeOffset string             `json:"solar_time_offset"`
+	Boundary        *LocalizedBoundary `json:"boundary"`
+	Options         *LocalizedOptions  `json:"options"`
 
 	Fortunes     []LocalizedFortune `json:"fortunes"`
 	FortuneStart string             `json:"fortune_start"`
@@ -91,6 +131,29 @@ func Localize(c *bazi.Chart, loc Locale) *LocalizedChart {
 		Hour:         localizePillar(b, c.Hour),
 		Consensus:    consensusName(b, c.StrengthConsensus()),
 		FortuneStart: c.FortuneStart.Format(timeLayout),
+
+		EffectiveTime:   c.EffectiveTime.Format(timeLayout),
+		SolarTimeOffset: c.SolarTimeOffset.String(),
+		Boundary: &LocalizedBoundary{
+			NearTermSeconds:    c.Boundary.NearTermSeconds,
+			NearHourSeconds:    c.Boundary.NearHourSeconds,
+			TermUncertaintySec: c.Boundary.TermUncertaintySec,
+			TermCritical:       c.Boundary.TermCritical,
+			HourCritical:       c.Boundary.HourCritical,
+		},
+		Options: &LocalizedOptions{
+			LateZiKeepsDay: c.Options.LateZiKeepsDay,
+			SolarTime:      b.SolarTime(c.Options.SolarTime),
+			HiddenStemSect: uint8(c.Options.HiddenStem),
+			TerrainSect:    uint8(c.Options.Terrain),
+			ChildLimitSect: uint8(c.Options.ChildLimit),
+			HalfTrinity:    c.Options.Relation.IncludeHalfTrinity,
+			Destruction:    c.Options.Relation.IncludeDestruction,
+		},
+	}
+
+	for _, r := range c.Relations {
+		out.Relations = append(out.Relations, localizeRelation(b, r))
 	}
 
 	for _, s := range c.Strengths {
@@ -107,6 +170,18 @@ func Localize(c *bazi.Chart, loc Locale) *LocalizedChart {
 		out.Warnings = append(out.Warnings, b.warnHour)
 	}
 	return out
+}
+
+// localizeRelation ganzhi 只回報「傳入 slice 的第幾個」，此處賦予年月日時的語意。
+func localizeRelation(b *bundle, r ganzhi.Relation) LocalizedRelation {
+	lr := LocalizedRelation{Kind: b.Relation(r.Kind)}
+	for _, i := range r.Indices {
+		lr.Pillars = append(lr.Pillars, b.Pillar(i))
+	}
+	if r.Transform != nil {
+		lr.Transform = b.Element(*r.Transform)
+	}
+	return lr
 }
 
 func localizePillar(b *bundle, p bazi.Pillar) LocalizedPillar {

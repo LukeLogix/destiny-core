@@ -204,3 +204,41 @@ func TestCustomStrategies(t *testing.T) {
 		t.Errorf("策略為 %d，應為 Classical", c.Strengths[0].StrategyID)
 	}
 }
+
+// TestComputeRecordsResolvedStrategies 命盤須記錄實際使用的旺衰策略。
+//
+// 若只留 nil，日後有人改動 DefaultWeights 全域變數，歸檔的命盤會重播出
+// 不同的身強身弱結論而無跡可循——與「結果永遠可重現、可稽核」的承諾相違。
+func TestComputeRecordsResolvedStrategies(t *testing.T) {
+	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), Default())
+
+	if len(c.Options.Strengths) != 2 {
+		t.Fatalf("命盤記錄了 %d 套策略，應為預設的 2 套", len(c.Options.Strengths))
+	}
+
+	w, ok := c.Options.Strengths[0].(WeightedStrength)
+	if !ok {
+		t.Fatalf("首套策略型別為 %T，應為 WeightedStrength", c.Options.Strengths[0])
+	}
+	if w.W.Main[1] != DefaultWeights.Main[1] {
+		t.Errorf("記錄的月令權重為 %.1f，應為 %.1f", w.W.Main[1], DefaultWeights.Main[1])
+	}
+	if w.Neutral != DefaultNeutral {
+		t.Errorf("記錄的中間帶為 %v，應為 %v", w.Neutral, DefaultNeutral)
+	}
+}
+
+// TestRecordedWeightsSurviveGlobalMutation 記錄的權重須為快照，
+// 不受事後修改全域變數影響。
+func TestRecordedWeightsSurviveGlobalMutation(t *testing.T) {
+	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), Default())
+	recorded := c.Options.Strengths[0].(WeightedStrength).W.Main[1]
+
+	orig := DefaultWeights.Main[1]
+	DefaultWeights.Main[1] = 99.0
+	defer func() { DefaultWeights.Main[1] = orig }()
+
+	if got := c.Options.Strengths[0].(WeightedStrength).W.Main[1]; got != recorded {
+		t.Errorf("全域變數被改動後，命盤記錄的權重變成 %.1f，應維持 %.1f", got, recorded)
+	}
+}

@@ -33,7 +33,7 @@ chart, _ := bazi.Compute(bazi.Birth{
 
 主 module 只用標準庫。節氣表以 `go:embed` 內嵌（29 KB），儒略日、干支、均時差全部自算。
 
-部署只有一個執行檔，沒有資料檔漏帶或路徑解析失敗的問題。CI 以 `go list -deps` 把關，靠檢查不靠自律。
+部署只有一個執行檔，沒有資料檔漏帶或路徑解析失敗的問題。CI 以 `go list -deps -test` 把關（含測試檔的 import），靠檢查不靠自律。
 
 ### 雙軌互相守護
 
@@ -55,7 +55,7 @@ chart.Boundary.TermCritical   // 出生時刻臨近節氣分界，年月柱不�
 chart.StrengthConsensus()     // ConsensusDisputed：兩套旺衰演算法判定分歧
 ```
 
-臨界閾值隨年代自動放寬——2030 年的盤差 3 秒才算臨界，2090 年的盤要差 2 分鐘，因為 ΔT（地球自轉修正）的未來值本質上不可知。
+臨界門檻為 **該筆節氣的不確定度 + 60 秒**（出生時間通常只記到分鐘）。ΔT（地球自轉修正）的未來值本質上不可知，故不確定度隨年代放大：2030 年約 1.4 秒 → 門檻約 61 秒；2090 年約 88 秒 → 門檻約 148 秒。
 
 這對餵給 LLM 特別重要：AI 最容易在沒把握的地方講得斬釘截鐵，把疑慮一併交給它，它才有辦法誠實地說「這張盤有疑慮」。
 
@@ -69,7 +69,14 @@ opt.LateZiKeepsDay = true                  // 晚子時派：23 時仍算當日
 opt.HiddenStem = bazi.HiddenStemWithEarth  // 亥藏壬甲戊
 opt.Terrain = bazi.TerrainSameBirth        // 陰陽同生同死
 opt.ChildLimit = bazi.ChildLimitChina95    // 元亨利貞起運法
-opt.SolarTime = bazi.TrueSolar             // 真太陽時
+opt.SolarTime = bazi.TrueSolar             // 真太陽時（須同時提供 Birth.Longitude）
+```
+
+`SolarTime` 只要不是 `WallClock`，`Birth.Longitude` 就是必填——它是 `*float64`，因為零值 `0` 是合法經度（格林威治），無法用來表達「未提供」：
+
+```go
+lon := 121.5
+birth := bazi.Birth{Time: t, Gender: bazi.Male, Longitude: &lon}
 ```
 
 每張命盤都攜帶所用口徑（`chart.Options`），結果永遠可重現、可稽核。
@@ -96,7 +103,10 @@ import (
 )
 
 func main() {
-    taipei := time.FixedZone("UTC+8", 8*3600)
+    // 用真實的 IANA 時區，不要用 time.FixedZone("UTC+8", 8*3600)——
+    // 後者會丟失歷史夏令時間，台灣在 1945-1961、1974-1975、1979 曾行用 UTC+9。
+    // 那些年份的出生資料用 FixedZone 會整整差一柱，而臨界標記不會示警。
+    taipei, _ := time.LoadLocation("Asia/Taipei")
 
     chart, err := bazi.Compute(bazi.Birth{
         Time:   time.Date(1990, 5, 20, 10, 30, 0, 0, taipei),
@@ -127,11 +137,13 @@ func main() {
 - 十二長生、納音
 - 五行分佈與旺衰（兩套策略）
 - 大運、流年（四種起運流派）
-- 干支關係：六合、三合、三會、六沖、相刑、六害、相破
+- 干支關係：天干五合、天干沖、六合、三合、半合、三會、六沖、相刑、六害
+  - 相破另有 `Options.Relation.IncludeDestruction`，**預設關閉**（多數流派不採用）
+  - 半合預設開啟，可由 `IncludeHalfTrinity` 關閉
 
 **只報告關係構成，不判定合化成否**——化與不化取決於得令、引化之神、是否被沖破，各家分歧極大且無定論。
 
-支援 1900–2100 年，超出範圍回 `ErrYearOutOfRange`，不靜默回傳可能錯誤的結果。
+支援**干支年** 1900–2100。注意下界落在干支年而非公曆年：1900 年立春（2/4 13:51）之前出生歸 1899 干支年，會回 `ErrYearOutOfRange`。超出範圍一律回錯誤，不靜默回傳可能錯誤的結果。
 
 ## 驗證
 
@@ -155,15 +167,17 @@ bazi/                八字：四柱、十神、藏干、大運、旺衰
 lang/                zh-TW / zh-CN 文字，依賴計算層而非相反
 ```
 
-五條硬規則，皆有測試把關：
+五條硬規則：
 
-1. `lang` 依賴計算層，反向絕不成立
-2. 口徑走 per-request Options，禁止套件級全域變數
-3. `internal/calendar` 以 Go 的 internal 機制封裝
-4. 共用層不得反向依賴任一核心
-5. 主 module 不得引入外部依賴
+| # | 規則 | 如何把關 |
+|---|---|---|
+| 1 | `lang` 依賴計算層，反向絕不成立 | `lang/arch_test.go` 以 AST 解析驗證 |
+| 2 | 口徑走 per-request Options，禁止套件級全域變數 | code review；`Compute` 會把解析後的策略寫回 `chart.Options` |
+| 3 | `internal/calendar` 以 Go 的 internal 機制封裝 | 編譯器 |
+| 4 | 共用層不得反向依賴任一核心 | `lang/arch_test.go` |
+| 5 | 主 module 不得引入外部依賴 | CI 的 `go list -deps -test` |
 
-其中第 1、4 條由 `lang/arch_test.go` 以 AST 解析驗證：計算層的字串字面量不得含命理術語。人會忘記，測試不會。
+第 1、4 條的檢查方式是用 AST 掃描計算層的字串字面量，確認不含命理術語。人會忘記，測試不會。
 
 ## 規劃中
 

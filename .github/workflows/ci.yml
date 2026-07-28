@@ -34,13 +34,30 @@ jobs:
       # 靠檢查，不靠自律。
       - name: 零依賴檢查
         run: |
-          ext=$(go list -deps ./... | grep '\.' | grep -v '^github.com/LukeLogix/destiny-core' || true)
+          set -euo pipefail
+
+          # -test 一併納入測試檔的 import。少了它，主 module 的 _test.go
+          # 引入外部套件會讓 go.mod 長出 require，而檢查照樣印綠燈——
+          # 那正是這條規則要擋的東西。
+          #
+          # 不加 || true：go list 若失敗（模組快取損毀、GOFLAGS 設定錯誤等）
+          # 必須讓整個步驟失敗，而非拿空字串當作「沒有外部依賴」。
+          deps=$(go list -deps -test ./...)
+
+          # 判定「外部」看第一段是否為網域樣式，不能只看有沒有點——
+          # 標準庫自身的 vendored 套件會以 vendor/golang.org/x/... 出現，
+          # 只要有套件引用 net/http 就會被誤判成外部依賴而擋下每一個 PR。
+          ext=$(printf '%s\n' "$deps" \
+            | grep -E '^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/' \
+            | grep -v '^github.com/LukeLogix/destiny-core' \
+            || true)
+
           if [ -n "$ext" ]; then
             echo "主 module 出現外部依賴："
             echo "$ext"
             exit 1
           fi
-          echo "✅ 零外部依賴"
+          echo "✅ 零外部依賴（已含測試檔的 import）"
 
       - name: 交叉驗證（獨立 module）
         run: cd test && go test ./...

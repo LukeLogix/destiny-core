@@ -280,3 +280,51 @@ func TestSolarTimeModes(t *testing.T) {
 			got, true_.SolarTimeOffset)
 	}
 }
+
+// TestSolarTimeAcceptsAntimeridianZones 反子午線兩側的時區偏移與經度符號相反，
+// 未正規化的經度差會得到約 ±24 小時的假值而誤拒合法出生地。
+func TestSolarTimeAcceptsAntimeridianZones(t *testing.T) {
+	cases := []struct {
+		lon      float64
+		tzOffset int // 秒
+		desc     string
+	}{
+		{-157.48, 14 * 3600, "吉里巴斯聖誕島 UTC+14"},
+		{-171.76, 13 * 3600, "薩摩亞阿皮亞 UTC+13"},
+		{-175.20, 13 * 3600, "東加努瓜婁發 UTC+13"},
+		{-176.55, 12*3600 + 45*60, "查塔姆群島 UTC+12:45"},
+		{179.20, 12 * 3600, "斐濟 UTC+12"},
+	}
+	opt := Default()
+	opt.SolarTime = LongitudeOnly
+
+	for _, c := range cases {
+		lon := c.lon
+		b := Birth{
+			Time:      time.Date(1990, 5, 20, 10, 30, 0, 0, time.FixedZone("x", c.tzOffset)),
+			Longitude: &lon,
+			Gender:    Male,
+		}
+		chart, err := Compute(b, opt)
+		if err != nil {
+			t.Errorf("%s 為合法出生地，不應被拒：%v", c.desc, err)
+			continue
+		}
+		if h := chart.SolarTimeOffset.Hours(); h > 4 || h < -4 {
+			t.Errorf("%s 修正量 %.2f 小時超出合理範圍", c.desc, h)
+		}
+	}
+}
+
+// TestSolarTimeStillRejectsRealMismatch 正規化不得放過真正的填錯。
+func TestSolarTimeStillRejectsRealMismatch(t *testing.T) {
+	opt := Default()
+	opt.SolarTime = LongitudeOnly
+
+	ny := -74.0
+	b := birthAt(1990, 5, 20, 10, 30)
+	b.Longitude = &ny
+	if _, err := Compute(b, opt); !errors.Is(err, ErrLongitudeMismatch) {
+		t.Errorf("台北時間配紐約經度應仍被拒，實得 %v", err)
+	}
+}

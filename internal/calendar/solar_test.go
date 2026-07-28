@@ -1,47 +1,62 @@
 package calendar
 
 import (
-	"encoding/json"
 	"math"
-	"os"
 	"sort"
 	"testing"
 )
 
-// fixture 為 JPL Horizons 產生的節氣 golden data，見 test/cmd/genfixture。
-const fixturePath = "../../test/fixtures/solarterms_jpl.json"
-
+// fixtureTerm 一筆基準節氣。
+//
+// 基準取自 go:embed 的內嵌表，而非 test/ module 內的 JSON——
+// test/ 有自己的 go.mod，Go 會將整個目錄排除在發布的 module zip 之外，
+// 下游使用者對模組快取執行 go test 時根本讀不到那個檔案。
+// 內嵌表本身即 JPL 值，且 bin 與 JSON 的逐筆一致由 test/fixture_test.go 把關。
 type fixtureTerm struct {
-	Year      int     `json:"year"`
-	Index     int     `json:"index"`
-	Key       string  `json:"key"`
-	Longitude float64 `json:"longitude_deg"`
-	UTC       string  `json:"utc"`
-	JD        float64 `json:"jd"`
+	Year      int
+	Index     int
+	Key       string
+	Longitude float64
+	JD        float64
 }
 
 type fixtureFile struct {
-	YearFrom int           `json:"year_from"`
-	YearTo   int           `json:"year_to"`
-	Count    int           `json:"count"`
-	Terms    []fixtureTerm `json:"terms"`
+	YearFrom int
+	YearTo   int
+	Count    int
+	Terms    []fixtureTerm
+}
+
+// jieKeys 供錯誤訊息辨識用
+var jieKeys = map[int]string{
+	1: "xiaohan", 3: "lichun", 5: "jingzhe", 7: "qingming",
+	9: "lixia", 11: "mangzhong", 13: "xiaoshu", 15: "liqiu",
+	17: "bailu", 19: "hanlu", 21: "lidong", 23: "daxue",
 }
 
 func loadFixture(t *testing.T) fixtureFile {
 	t.Helper()
-	b, err := os.ReadFile(fixturePath)
-	if err != nil {
-		t.Fatalf("讀取 fixture 失敗: %v", err)
+	from, to := YearRange()
+	f := fixtureFile{YearFrom: from, YearTo: to}
+
+	for y := from; y <= to; y++ {
+		for idx := 1; idx <= 23; idx += 2 {
+			jd, _, err := LookupTerm(y, idx)
+			if err != nil {
+				t.Fatalf("內嵌表缺 %d 年索引 %d: %v", y, idx, err)
+			}
+			f.Terms = append(f.Terms, fixtureTerm{
+				Year:      y,
+				Index:     idx,
+				Key:       jieKeys[idx],
+				Longitude: math.Mod(float64(270+idx*15), 360),
+				JD:        jd,
+			})
+		}
 	}
-	var f fixtureFile
-	if err := json.Unmarshal(b, &f); err != nil {
-		t.Fatalf("解析 fixture 失敗: %v", err)
-	}
-	if len(f.Terms) == 0 {
-		t.Fatal("fixture 無資料")
-	}
-	if len(f.Terms) != f.Count {
-		t.Fatalf("fixture 自述 %d 筆，實際 %d 筆", f.Count, len(f.Terms))
+	f.Count = len(f.Terms)
+	if f.Count == 0 {
+		t.Fatal("內嵌表無資料")
 	}
 	return f
 }

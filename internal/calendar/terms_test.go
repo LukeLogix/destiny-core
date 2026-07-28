@@ -6,31 +6,51 @@ import (
 	"testing"
 )
 
-// TestLookupTermMatchesFixture 內嵌表必須與 JPL golden data 逐筆一致。
-// 這是二進位轉換是否無損的唯一保證——轉換過程若有截斷或精度損失，此處會發現。
-func TestLookupTermMatchesFixture(t *testing.T) {
-	f := loadFixture(t)
-
+// TestLookupTermCoversWholeRange 內嵌表在宣告的年份範圍內不得有缺漏。
+//
+// bin 與 JPL golden JSON 的逐筆一致由 test/fixture_test.go 把關——
+// 該 JSON 位於巢狀 module 內，不隨主 module 發布，故不能在此讀取。
+func TestLookupTermCoversWholeRange(t *testing.T) {
+	from, to := YearRange()
 	checked := 0
-	for _, term := range f.Terms {
-		jd, unc, err := LookupTerm(term.Year, term.Index)
-		if err != nil {
-			t.Fatalf("%d idx=%d 查表失敗: %v", term.Year, term.Index, err)
+	for y := from; y <= to; y++ {
+		for idx := 1; idx <= 23; idx += 2 {
+			jd, unc, err := LookupTerm(y, idx)
+			if err != nil {
+				t.Fatalf("%d 年索引 %d 查表失敗: %v", y, idx, err)
+			}
+			if jd <= 0 || math.IsNaN(jd) {
+				t.Errorf("%d 年索引 %d 的儒略日不合理: %v", y, idx, jd)
+			}
+			if unc < 0 || math.IsNaN(unc) {
+				t.Errorf("%d 年索引 %d 的不確定度不合理: %v", y, idx, unc)
+			}
+			checked++
 		}
-		// float64 原樣存取，應完全相等；容許 1e-9 天（約 0.1 毫秒）的浮點誤差
-		if d := math.Abs(jd - term.JD); d > 1e-9 {
-			t.Errorf("%d %s: 查表 JD %.10f 與 fixture %.10f 相差 %.2e",
-				term.Year, term.Key, jd, term.JD, d)
-		}
-		if unc < 0 {
-			t.Errorf("%d %s: 不確定度為負 %.2f", term.Year, term.Key, unc)
-		}
-		checked++
 	}
-	if checked != f.Count {
-		t.Fatalf("只驗證了 %d 筆，fixture 共 %d 筆", checked, f.Count)
+	want := (to - from + 1) * 12
+	if checked != want {
+		t.Fatalf("涵蓋 %d 筆，應為 %d 筆", checked, want)
 	}
-	t.Logf("內嵌表與 JPL golden data 逐筆一致，共 %d 筆", checked)
+	t.Logf("內嵌表涵蓋 %d-%d 共 %d 筆，無缺漏", from, to, checked)
+}
+
+// TestLookupTermIsMonotonic 節氣時刻須嚴格遞增，可攔下轉換時的排序或位移錯誤。
+func TestLookupTermIsMonotonic(t *testing.T) {
+	from, to := YearRange()
+	prev := 0.0
+	for y := from; y <= to; y++ {
+		for idx := 1; idx <= 23; idx += 2 {
+			jd, _, err := LookupTerm(y, idx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if prev != 0 && jd <= prev {
+				t.Fatalf("%d 年索引 %d 的儒略日 %.5f 未大於前一筆 %.5f", y, idx, jd, prev)
+			}
+			prev = jd
+		}
+	}
 }
 
 // TestLookupTermUncertaintyGrowsWithEra 不確定度須隨年代放大。

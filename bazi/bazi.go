@@ -100,6 +100,11 @@ func Compute(b Birth, opt Options) (*Chart, error) {
 	if strategies == nil {
 		strategies = []Strength{DefaultWeighted(), ClassicalStrength{}}
 	}
+	// 解析後的策略寫回命盤所記錄的 Options——WeightedStrength 是值型別且內含
+	// 完整權重表，故此舉同時滿足「命盤需記錄所用權重」。若只留 nil，
+	// 日後有人改動 DefaultWeights 全域變數，歸檔的命盤會重播出不同結論而無跡可循。
+	c.Options.Strengths = strategies
+
 	in := StrengthInput{Pillars: c.Pillars()}
 	for _, s := range strategies {
 		c.Strengths = append(c.Strengths, s.Evaluate(in))
@@ -141,6 +146,16 @@ func solarTimeOffset(b Birth, opt Options) (time.Duration, error) {
 	_, tzOffsetSec := b.Time.Zone()
 	// 經度換算的當地平太陽時，與鐘面時間的差
 	diffHours := lon/15 - float64(tzOffsetSec)/3600
+
+	// 正規化到 (-12, 12]。反子午線兩側的時區偏移與經度符號相反，
+	// 未正規化會得到約 ±24 小時的假差值——吉里巴斯萊恩群島（-157.5°E, UTC+14）、
+	// 薩摩亞、東加、查塔姆群島皆會被誤判為填錯而拒絕。
+	for diffHours > 12 {
+		diffHours -= 24
+	}
+	for diffHours <= -12 {
+		diffHours += 24
+	}
 
 	// 門檻 4 小時：涵蓋全球所有合法組合（最極端為中國全境單一時區，
 	// 新疆達 2.9 小時），同時攔下「台北時間配紐約經度」這類填錯（12.9 小時）。

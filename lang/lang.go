@@ -29,17 +29,20 @@ func Locales() []Locale { return []Locale{ZhTW, ZhCN} }
 // 全為索引對應的字串陣列——新增語言即新增一份資料，
 // 計算層不需要知道有幾種語言，也不需要知道文字長什麼樣。
 type bundle struct {
-	stems    [ganzhi.StemCount]string
-	branches [ganzhi.BranchCount]string
-	elements [ganzhi.ElementCount]string
-	tenGods  [bazi.TenGodCount]string
-	terrains [bazi.TerrainCount]string
-	sounds   [bazi.SoundCount]string
-	verdicts [3]string
-	reasons  [8]string
-	polarity [2]string
-	warnTerm string
-	warnHour string
+	stems     [ganzhi.StemCount]string
+	branches  [ganzhi.BranchCount]string
+	elements  [ganzhi.ElementCount]string
+	tenGods   [bazi.TenGodCount]string
+	terrains  [bazi.TerrainCount]string
+	sounds    [bazi.SoundCount]string
+	verdicts  [3]string
+	reasons   [8]string
+	polarity  [2]string
+	relations [10]string
+	pillars   [4]string
+	solarTime [3]string
+	warnTerm  string
+	warnHour  string
 }
 
 // Bundle 取得指定語言的文字資料；未知 locale 回退至預設。
@@ -83,6 +86,22 @@ func (b *bundle) Sound(s bazi.SoundIndex) string {
 
 func (b *bundle) Verdict(v bazi.Verdict) string {
 	return pick(b.verdicts[:], int(v))
+}
+
+// Relation 干支關係的種類名稱
+func (b *bundle) Relation(k ganzhi.RelationKind) string {
+	return pick(b.relations[:], int(k))
+}
+
+// Pillar 柱位名稱。ganzhi 只回報「傳入 slice 的第幾個」，
+// 由此處賦予年月日時的語意——共用層不綁定特定術數的位置概念。
+func (b *bundle) Pillar(i int) string {
+	return pick(b.pillars[:], i)
+}
+
+// SolarTime 真太陽時口徑名稱
+func (b *bundle) SolarTime(m bazi.SolarTimeMode) string {
+	return pick(b.solarTime[:], int(m))
 }
 
 func (b *bundle) Reason(r bazi.ReasonCode) string {
