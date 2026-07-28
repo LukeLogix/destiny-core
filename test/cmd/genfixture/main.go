@@ -258,9 +258,9 @@ func main() {
 		}
 		terms = append(terms, Term{
 			Year: p.year, Index: p.idx, Key: jieKeys[p.idx],
-			Longitude: target,
-			UTC:       utc.Format("2006-01-02T15:04:05.000Z"),
-			JD:        jd,
+			Longitude:    target,
+			UTC:          utc.Format("2006-01-02T15:04:05.000Z"),
+			JD:           jd,
 			TymeDeltaSec: math.Round(delta*10) / 10,
 		})
 	}

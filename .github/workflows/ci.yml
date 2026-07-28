@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: 格式檢查
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "以下檔案未格式化："
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: 單元測試
+        run: go test -v ./...
+
+      # 第五條硬規則：主 module 不得引入外部依賴。
+      # 靠檢查，不靠自律。
+      - name: 零依賴檢查
+        run: |
+          ext=$(go list -deps ./... | grep '\.' | grep -v '^github.com/LukeLogix/destiny-core' || true)
+          if [ -n "$ext" ]; then
+            echo "主 module 出現外部依賴："
+            echo "$ext"
+            exit 1
+          fi
+          echo "✅ 零外部依賴"
+
+      - name: 交叉驗證（獨立 module）
+        run: cd test && go test ./...
