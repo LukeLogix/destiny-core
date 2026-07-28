@@ -7,10 +7,15 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # 跑在自架 runner 上。若日後要限定特定機器，把 self-hosted 換成
+    # 陣列形式並補上該 runner 的標籤，例如：
+    #   runs-on: [self-hosted, linux, x64, destiny]
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
+      # 自架 runner 若已預裝 Go 1.25 以上，這一步可整段移除以省下每次的安裝時間；
+      # 保留的好處是版本由 workflow 決定，不隨機器上的 Go 版本漂移。
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'

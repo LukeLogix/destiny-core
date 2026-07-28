@@ -130,6 +130,14 @@ func main() {
 
 更多用法見 [`example_test.go`](example_test.go)。
 
+## 開發
+
+```bash
+./ci-local.sh    # 與 CI 同一組檢查：格式、vet、測試、零依賴、交叉驗證
+```
+
+CI 跑在自架 runner 上（`.github/workflows/ci.yml`）。
+
 ## 計算範圍
 
 - 四柱（年柱以立春分界、月柱以十二節分界）
