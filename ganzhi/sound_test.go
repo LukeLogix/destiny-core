@@ -60,3 +60,34 @@ func TestSoundCoversThirty(t *testing.T) {
 		}
 	}
 }
+
+// TestSoundNamedConstants 具名常數須與納音索引一致。
+//
+// 常數順序一旦寫錯即全盤位移，且不會有任何症狀（納音仍算得出來，只是名字錯）。
+// 故以命例釘住若干點，並驗證五行相符——名字與五行對不上即為錯位。
+func TestSoundNamedConstants(t *testing.T) {
+	cases := []struct {
+		sex  SexagenaryIndex
+		want SoundIndex
+		elem Element
+		desc string
+	}{
+		{0, HaiZhongJin, Metal, "甲子海中金"},
+		{6, LuPangTu, Earth, "庚午路旁土"},
+		{17, BaiLaJin, Metal, "辛巳白蠟金"},
+		{21, QuanZhongShui, Water, "乙酉泉中水"},
+		{59, DaHaiShui, Water, "癸亥大海水"},
+	}
+	for _, c := range cases {
+		got := SoundOf(c.sex)
+		if got != c.want {
+			t.Errorf("%s: 納音索引得 %d，應為 %d", c.desc, got, c.want)
+		}
+		if e := got.Element(); e != c.elem {
+			t.Errorf("%s: 五行得 %d，應為 %d——名字與五行對不上代表常數錯位", c.desc, e, c.elem)
+		}
+	}
+	if int(DaHaiShui)+1 != SoundCount {
+		t.Errorf("末項 DaHaiShui = %d，加一應等於 SoundCount %d", DaHaiShui, SoundCount)
+	}
+}
