@@ -232,6 +232,27 @@ func (k Kind) SubjectOnly() bool {
 	return false
 }
 
+// BasisIsFixed 此神煞的基準是否只有一種有出處，不受 Options 的基準旋鈕影響。
+//
+// BranchBase／StemBase 是把「年或日」的選擇一次套到所有神煞，但那個選擇
+// 只在確實有兩派的項目上成立。三合局系（華蓋、驛馬、將星⋯）與孤辰寡宿
+// 古今各有年支、日支兩種用法，該切；以下四項則典籍只給年支：
+//
+//	元辰   〈論元辰〉「假如甲子生男與甲午對衝」——甲子是生年
+//	勾絞   〈論勾絞〉「假令甲子陽命人」、《五行精紀》「各隨本命求之」
+//	紅鸞   《神峰通考》同章起例一律作「◯生人見◯字」（華蓋、將星、喪門皆然）
+//	天喜   同上，且其取法就是紅鸞之對衝
+//
+// 套上日支會生出典籍沒有的命中。實測基準命例即多出「紅鸞年柱（以日支）」
+// 與「天喜時柱（以日支）」兩筆——後者更是該盤唯一的天喜，以年支根本不成立。
+func (k Kind) BasisIsFixed() bool {
+	switch k {
+	case YuanChen, GouJiao, HongLuan, TianXi:
+		return true
+	}
+	return false
+}
+
 // CustomaryBasis 慣用基準
 func (k Kind) CustomaryBasis() Basis {
 	if k >= KindCount {

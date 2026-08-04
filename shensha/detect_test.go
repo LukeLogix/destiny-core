@@ -304,3 +304,38 @@ func TestTraditionsAreConsistent(t *testing.T) {
 		}
 	}
 }
+
+// TestFixedBasisIgnoresToggle 只有一種基準有出處者，不隨 BranchBase 變動。
+//
+// BranchBaseBoth 曾把日支套到紅鸞、天喜、元辰、勾絞上，生出典籍沒有的命中——
+// 基準命例因此多出「紅鸞（以日支）」與「天喜（以日支）」，後者是該盤唯一的
+// 天喜，以年支根本不成立。切換的前提是真的有兩派，沒有就不該切。
+func TestFixedBasisIgnoresToggle(t *testing.T) {
+	in, scan := sampleInput(), sampleScan()
+
+	for _, sect := range []BranchBaseSect{
+		BranchBaseCustomary, BranchBaseDay, BranchBaseYear, BranchBaseBoth,
+	} {
+		for _, h := range Detect(in, scan, Options{BranchBase: sect}) {
+			if !h.Kind.BasisIsFixed() {
+				continue
+			}
+			if h.Basis != h.Kind.CustomaryBasis() {
+				t.Errorf("口徑 %d 下 %s 以 %s 命中，該項只有 %s 有出處",
+					sect, h.Kind.ID(), h.Basis.ID(), h.Kind.CustomaryBasis().ID())
+			}
+		}
+	}
+
+	// 反面：不受限者在 Both 之下確實會多出另一個基準的命中，
+	// 否則本測試可能只是因為旋鈕整個失效才通過
+	var other int
+	for _, h := range Detect(in, scan, Options{BranchBase: BranchBaseBoth}) {
+		if !h.Kind.BasisIsFixed() && h.Basis != h.Kind.CustomaryBasis() {
+			other++
+		}
+	}
+	if other == 0 {
+		t.Error("兩者皆查時完全沒有非慣用基準的命中——旋鈕可能整個失效")
+	}
+}

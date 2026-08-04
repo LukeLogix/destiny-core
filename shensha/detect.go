@@ -196,6 +196,12 @@ const (
 func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	c := k.CustomaryBasis()
 
+	// 只有一種基準有出處者不跟著旋鈕走——切換的前提是真的有兩派
+	if k.BasisIsFixed() {
+		out[0] = c
+		return 1
+	}
+
 	if c == BasisDayStem || c == BasisYearStem {
 		switch opt.StemBase {
 		case StemBaseDay:
