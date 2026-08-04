@@ -2,6 +2,8 @@ package lang
 
 // 各語言的文字資料。新增語言只需在此加一筆，計算層一行不動。
 
+import "github.com/LukeLogix/destiny-core/shensha"
+
 var bundles = map[Locale]*bundle{
 	ZhTW: {
 		stems:    [10]string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"},
@@ -32,10 +34,25 @@ var bundles = map[Locale]*bundle{
 			"天干五合", "天干沖", "六合", "三合", "半合",
 			"三會", "沖", "刑", "害", "破",
 		},
-		pillars:   [4]string{"年", "月", "日", "時"},
-		solarTime: [3]string{"鐘面時間", "經度修正", "真太陽時"},
-		warnTerm:  "出生時刻臨近節氣分界，年柱與月柱可能因幾分鐘之差而不同，建議確認出生時間",
-		warnHour:  "出生時刻臨近時辰分界，時柱可能因幾分鐘之差而不同，建議確認出生時間",
+		pillars:         [4]string{"年", "月", "日", "時"},
+		solarTime:       [3]string{"鐘面時間", "經度修正", "真太陽時"},
+		genders:         [3]string{"", "男", "女"},
+		hiddenTypes:     [3]string{"本氣", "中氣", "餘氣"},
+		hiddenStemSects: [2]string{"標準", "含餘氣戊"},
+		terrainSects:    [2]string{"陰干逆行", "陰陽同生同死"},
+		childLimitSects: [4]string{"以秒換算", "元亨利貞", "按日與時辰數", "以分換算並續算時辰"},
+		consensuses:     [3]string{"身強", "身弱", "有分歧"},
+		shenSha: [shensha.KindCount]string{
+			"天乙貴人", "祿神", "羊刃", "金輿", "文昌貴人",
+			"驛馬", "將星", "華蓋", "桃花（咸池）", "劫煞",
+			"亡神", "災煞", "六厄", "孤辰", "寡宿",
+		},
+		basis:      [8]string{"日干", "年干", "日支", "年支", "月支", "柱本身", "全盤", "太歲"},
+		variants:   [5]string{"", "陽貴", "陰貴", "陽干刃", "陰干刃"},
+		categories: [4]string{"常用", "次常用", "太歲類", "冷僻"},
+		traditions: [3]string{"子平", "紫微斗數", "十二歲君"},
+		warnTerm:   "出生時刻臨近節氣分界，年柱與月柱可能因幾分鐘之差而不同，建議確認出生時間",
+		warnHour:   "出生時刻臨近時辰分界，時柱可能因幾分鐘之差而不同，建議確認出生時間",
 	},
 
 	ZhCN: {
@@ -67,9 +84,24 @@ var bundles = map[Locale]*bundle{
 			"天干五合", "天干冲", "六合", "三合", "半合",
 			"三会", "冲", "刑", "害", "破",
 		},
-		pillars:   [4]string{"年", "月", "日", "时"},
-		solarTime: [3]string{"钟面时间", "经度修正", "真太阳时"},
-		warnTerm:  "出生时刻临近节气分界，年柱与月柱可能因几分钟之差而不同，建议确认出生时间",
-		warnHour:  "出生时刻临近时辰分界，时柱可能因几分钟之差而不同，建议确认出生时间",
+		pillars:         [4]string{"年", "月", "日", "时"},
+		solarTime:       [3]string{"钟面时间", "经度修正", "真太阳时"},
+		genders:         [3]string{"", "男", "女"},
+		hiddenTypes:     [3]string{"本气", "中气", "余气"},
+		hiddenStemSects: [2]string{"标准", "含余气戊"},
+		terrainSects:    [2]string{"阴干逆行", "阴阳同生同死"},
+		childLimitSects: [4]string{"以秒换算", "元亨利贞", "按日与时辰数", "以分换算并续算时辰"},
+		consensuses:     [3]string{"身强", "身弱", "有分歧"},
+		shenSha: [shensha.KindCount]string{
+			"天乙贵人", "禄神", "羊刃", "金舆", "文昌贵人",
+			"驿马", "将星", "华盖", "桃花（咸池）", "劫煞",
+			"亡神", "灾煞", "六厄", "孤辰", "寡宿",
+		},
+		basis:      [8]string{"日干", "年干", "日支", "年支", "月支", "柱本身", "全盘", "太岁"},
+		variants:   [5]string{"", "阳贵", "阴贵", "阳干刃", "阴干刃"},
+		categories: [4]string{"常用", "次常用", "太岁类", "冷僻"},
+		traditions: [3]string{"子平", "紫微斗数", "十二岁君"},
+		warnTerm:   "出生时刻临近节气分界，年柱与月柱可能因几分钟之差而不同，建议确认出生时间",
+		warnHour:   "出生时刻临近时辰分界，时柱可能因几分钟之差而不同，建议确认出生时间",
 	},
 }

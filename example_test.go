@@ -58,10 +58,10 @@ func Example_tenGods() {
 	}, bazi.Default())
 
 	b := lang.Bundle(lang.ZhTW)
-	fmt.Printf("年干十神：%s\n", b.TenGod(chart.Year.StemTenGod))
+	fmt.Printf("年干十神：%s\n", b.TenGod(chart.Year.StemTenGod).Name)
 	fmt.Print("月支藏干：")
 	for _, h := range chart.Month.Hidden {
-		fmt.Printf("%s(%s) ", b.Stem(h.Stem), b.TenGod(h.TenGod))
+		fmt.Printf("%s(%s) ", b.Stem(h.Stem), b.TenGod(h.TenGod).Name)
 	}
 	fmt.Println()
 
@@ -122,13 +122,13 @@ func Example_strength() {
 
 	lc := lang.Localize(chart, lang.ZhTW)
 	for _, s := range lc.Strengths {
-		fmt.Printf("%s：%s\n", s.Strategy, s.Verdict)
+		fmt.Printf("%s：%s\n", s.Strategy.Name, s.Verdict.Name)
 	}
-	fmt.Printf("共識：%s\n", lc.Consensus)
+	fmt.Printf("共識：%s\n", lc.Consensus.Name)
 
 	// Output:
-	// weighted：身弱
-	// classical：身弱
+	// 加權法：身弱
+	// 傳統格局法：身弱
 	// 共識：身弱
 }
 
@@ -168,7 +168,7 @@ func Example_json() {
 		DayMaster string `json:"day_master"`
 		Year      string `json:"year"`
 		Consensus string `json:"consensus"`
-	}{lc.DayMaster, lc.Year.Sexagenary, lc.Consensus})
+	}{lc.DayMaster, lc.Year.Sexagenary, lc.Consensus.Name})
 
 	fmt.Println(string(out))
 

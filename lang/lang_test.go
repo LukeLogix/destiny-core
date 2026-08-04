@@ -7,6 +7,7 @@ import (
 
 	"github.com/LukeLogix/destiny-core/bazi"
 	"github.com/LukeLogix/destiny-core/ganzhi"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 var cst = time.FixedZone("UTC+8", 8*3600)
@@ -62,10 +63,10 @@ func TestTenGodDiffersBetweenLocales(t *testing.T) {
 	}
 	tw, cn := Bundle(ZhTW), Bundle(ZhCN)
 	for _, c := range cases {
-		if got := tw.TenGod(c.god); got != c.tw {
+		if got := tw.TenGod(c.god).Name; got != c.tw {
 			t.Errorf("繁體十神 %d 為 %q，應為 %q", c.god, got, c.tw)
 		}
-		if got := cn.TenGod(c.god); got != c.cn {
+		if got := cn.TenGod(c.god).Name; got != c.cn {
 			t.Errorf("簡體十神 %d 為 %q，應為 %q", c.god, got, c.cn)
 		}
 	}
@@ -86,22 +87,22 @@ func TestAllLocalesCoverAllIndices(t *testing.T) {
 			}
 		}
 		for i := 0; i < bazi.TenGodCount; i++ {
-			if b.TenGod(bazi.TenGod(i)) == "" {
+			if b.TenGod(bazi.TenGod(i)).Name == "" {
 				t.Errorf("%s 缺十神 %d", loc, i)
 			}
 		}
 		for i := 0; i < ganzhi.ElementCount; i++ {
-			if b.Element(ganzhi.Element(i)) == "" {
+			if b.Element(ganzhi.Element(i)).Name == "" {
 				t.Errorf("%s 缺五行 %d", loc, i)
 			}
 		}
 		for i := 0; i < ganzhi.TerrainCount; i++ {
-			if b.Terrain(ganzhi.Terrain(i)) == "" {
+			if b.Terrain(ganzhi.Terrain(i)).Name == "" {
 				t.Errorf("%s 缺十二長生 %d", loc, i)
 			}
 		}
 		for i := 0; i < ganzhi.SoundCount; i++ {
-			if b.Sound(ganzhi.SoundIndex(i)) == "" {
+			if b.Sound(ganzhi.SoundIndex(i)).Name == "" {
 				t.Errorf("%s 缺納音 %d", loc, i)
 			}
 		}
@@ -141,23 +142,23 @@ func TestLocalizeChart(t *testing.T) {
 	if lc.DayMaster != "乙" {
 		t.Errorf("日主為 %q，應為乙", lc.DayMaster)
 	}
-	if lc.Year.StemTenGod != "正官" {
+	if lc.Year.StemTenGod.Name != "正官" {
 		t.Errorf("年干十神為 %q，應為正官", lc.Year.StemTenGod)
 	}
 	// 月支巳藏丙庚戊
 	if len(lc.Month.Hidden) != 3 {
 		t.Fatalf("月支藏干 %d 個，應為 3 個", len(lc.Month.Hidden))
 	}
-	if lc.Month.Hidden[0].Stem != "丙" || lc.Month.Hidden[0].TenGod != "傷官" {
+	if lc.Month.Hidden[0].Stem != "丙" || lc.Month.Hidden[0].TenGod.Name != "傷官" {
 		t.Errorf("月支首個藏干為 %q/%q，應為丙/傷官",
 			lc.Month.Hidden[0].Stem, lc.Month.Hidden[0].TenGod)
 	}
 	// 納音
-	if lc.Year.Sound != "路旁土" {
+	if lc.Year.Sound.Name != "路旁土" {
 		t.Errorf("年柱納音為 %q，應為路旁土", lc.Year.Sound)
 	}
 	// 地勢
-	if lc.Year.Terrain != "長生" {
+	if lc.Year.Terrain.Name != "長生" {
 		t.Errorf("年柱地勢為 %q，應為長生", lc.Year.Terrain)
 	}
 }
@@ -170,18 +171,18 @@ func TestLocalizeStrength(t *testing.T) {
 	if len(lc.Strengths) != 2 {
 		t.Fatalf("應有兩套旺衰結果，實得 %d 套", len(lc.Strengths))
 	}
-	if lc.Consensus != "身弱" {
+	if lc.Consensus.Name != "身弱" {
 		t.Errorf("共識為 %q，應為身弱", lc.Consensus)
 	}
 	for _, s := range lc.Strengths {
-		if s.Verdict == "" {
+		if s.Verdict.Name == "" {
 			t.Error("旺衰結論未本地化")
 		}
 		if len(s.Reasons) == 0 {
 			t.Error("旺衰依據未本地化")
 		}
 		for _, r := range s.Reasons {
-			if r == "" {
+			if r.Name == "" {
 				t.Error("依據文字為空")
 			}
 		}
@@ -235,8 +236,12 @@ func TestOutOfRangeIndexDoesNotPanic(t *testing.T) {
 	}()
 	_ = b.Stem(ganzhi.StemIndex(200))
 	_ = b.Branch(ganzhi.BranchIndex(200))
-	_ = b.TenGod(bazi.TenGod(200))
-	_ = b.Sound(ganzhi.SoundIndex(200))
+	if got := b.TenGod(bazi.TenGod(200)); got.Name != "" || got.ID != "" {
+		t.Errorf("越界十神應回空 Term，實得 %+v", got)
+	}
+	if got := b.Sound(ganzhi.SoundIndex(200)); got.Name != "" || got.ID != "" {
+		t.Errorf("越界納音應回空 Term，實得 %+v", got)
+	}
 }
 
 // TestLocalizeIncludesRelations 干支關係須進入本地化輸出。
@@ -254,7 +259,7 @@ func TestLocalizeIncludesRelations(t *testing.T) {
 		t.Fatalf("本地化後有 %d 組關係，命盤有 %d 組", len(lc.Relations), len(c.Relations))
 	}
 	for _, r := range lc.Relations {
-		if r.Kind == "" {
+		if r.Kind.Name == "" {
 			t.Error("關係種類未本地化")
 		}
 		if len(r.Pillars) == 0 {
@@ -265,7 +270,7 @@ func TestLocalizeIncludesRelations(t *testing.T) {
 	// 乙庚合金：年干庚與日干乙
 	var found bool
 	for _, r := range lc.Relations {
-		if r.Kind == "天干五合" && r.Transform == "金" {
+		if r.Kind.Name == "天干五合" && r.Transform.Name == "金" {
 			found = true
 		}
 	}
@@ -280,11 +285,15 @@ func TestLocalizeRelationPillarNames(t *testing.T) {
 	c := sampleChart(t)
 	lc := Localize(c, ZhTW)
 
-	valid := map[string]bool{"年": true, "月": true, "日": true, "時": true}
+	validName := map[string]bool{"年": true, "月": true, "日": true, "時": true}
+	validID := map[string]bool{"year": true, "month": true, "day": true, "hour": true}
 	for _, r := range lc.Relations {
 		for _, p := range r.Pillars {
-			if !valid[p] {
-				t.Errorf("柱位名稱 %q 不在年月日時之內", p)
+			if !validName[p.Name] {
+				t.Errorf("柱位名稱 %q 不在年月日時之內", p.Name)
+			}
+			if !validID[p.ID] {
+				t.Errorf("柱位識別字 %q 不在 year/month/day/hour 之內", p.ID)
 			}
 		}
 	}
@@ -314,7 +323,76 @@ func TestLocalizeIncludesAuditFields(t *testing.T) {
 	if lc.Options.LateZiKeepsDay != c.Options.LateZiKeepsDay {
 		t.Error("子時口徑未轉出")
 	}
-	if lc.Options.SolarTime == "" {
+	if lc.Options.SolarTime.Name == "" {
 		t.Error("真太陽時口徑未轉出")
+	}
+}
+
+// TestLocalizedNamesAreUnique 每個 locale 下所有神煞的顯示名必須兩兩不同。
+//
+// 數個神煞名在不同體系指涉不同的東西——文昌（紫微系／子平系）、大耗（元辰
+// 別名／十二歲君第七位）、官符（亡神別名／太歲類）、白虎（災煞別名／歲君
+// 第九位）、劍鋒（歲君第一位／〈總論諸神煞〉）。撞名會使同一張盤出現兩個
+// 「文昌貴人」而無從分辨，是最糟的結果。
+//
+// 與 arch_test.go 同屬「靠檢查不靠自律」——日後新增神煞若撞名，當場擋下。
+func TestLocalizedShenShaNamesAreUnique(t *testing.T) {
+	for _, loc := range Locales() {
+		b := Bundle(loc)
+		seen := map[string]shensha.Kind{}
+		for k := shensha.Kind(0); k < shensha.KindCount; k++ {
+			n := b.ShenSha(k).Name
+			if n == "" {
+				t.Errorf("%s 缺神煞 %s 的名稱", loc, k.ID())
+				continue
+			}
+			if prev, dup := seen[n]; dup {
+				t.Errorf("%s 的 %s 與 %s 顯示名皆為 %q——使用者無從分辨",
+					loc, prev.ID(), k.ID(), n)
+			}
+			seen[n] = k
+		}
+	}
+}
+
+// TestTermIDIsLocaleIndependent 同一值在不同語系下 ID 須相同、Name 須各自
+// 正確。ID 若隨語系變動即失去作為鍵的資格。
+func TestTermIDIsLocaleIndependent(t *testing.T) {
+	tw, cn := Bundle(ZhTW), Bundle(ZhCN)
+
+	for i := 0; i < bazi.TenGodCount; i++ {
+		a, b := tw.TenGod(bazi.TenGod(i)), cn.TenGod(bazi.TenGod(i))
+		if a.ID != b.ID {
+			t.Errorf("十神 %d 的 ID 在兩語系不同：%q vs %q", i, a.ID, b.ID)
+		}
+		if a.Name == "" || b.Name == "" {
+			t.Errorf("十神 %d 有語系缺名稱", i)
+		}
+	}
+	for k := shensha.Kind(0); k < shensha.KindCount; k++ {
+		if tw.ShenSha(k).ID != cn.ShenSha(k).ID {
+			t.Errorf("神煞 %s 的 ID 在兩語系不同", k.ID())
+		}
+	}
+}
+
+// TestLocalizeCarriesShenSha 本地化後的命盤須帶神煞，且各欄位齊備。
+func TestLocalizeCarriesShenSha(t *testing.T) {
+	c := sampleChart(t)
+	lc := Localize(c, ZhTW)
+
+	if len(lc.ShenSha) == 0 {
+		t.Fatal("本地化後應帶原局神煞")
+	}
+	for _, s := range lc.ShenSha {
+		if s.Kind.ID == "" || s.Kind.Name == "" {
+			t.Errorf("神煞的種類欄位不完整：%+v", s)
+		}
+		if s.Basis.ID == "" || s.Basis.Name == "" {
+			t.Errorf("神煞 %s 的基準欄位不完整", s.Kind.Name)
+		}
+		if s.Category.ID == "" || s.Tradition.ID == "" {
+			t.Errorf("神煞 %s 缺分類或體系", s.Kind.Name)
+		}
 	}
 }
