@@ -6,97 +6,6 @@ import (
 	"github.com/LukeLogix/destiny-core/ganzhi"
 )
 
-// BranchBaseSect 以地支查的那組，基準取自年支或日支——最大宗的分歧，
-// 且一次影響六七個神煞，故抽為共通旋鈕。
-type BranchBaseSect uint8
-
-const (
-	// BranchBaseCustomary 各神煞沿用其慣用基準（預設）
-	BranchBaseCustomary BranchBaseSect = iota
-	BranchBaseDay                      // 一律以日支為基準
-	BranchBaseYear                     // 一律以年支為基準
-	BranchBaseBoth                     // 年支、日支皆查，以 Hit.Basis 區分
-)
-
-// StemBaseSect 以天干查的那組，基準取自年干或日干。
-//
-// 與 BranchBase 同一性質的分歧，先前只實作了地支那半。市面實作多同時查
-// 日干與年干——同一張盤的天乙貴人可能因此多出一柱。
-type StemBaseSect uint8
-
-const (
-	// StemBaseCustomary 各神煞沿用其慣用基準，即日干（預設）
-	StemBaseCustomary StemBaseSect = iota
-	StemBaseDay                    // 一律以日干為基準
-	StemBaseYear                   // 一律以年干為基準
-	StemBaseBoth                   // 年干、日干皆查，以 Hit.Basis 區分
-)
-
-// TianYiSect 天乙貴人的口訣版本
-type TianYiSect uint8
-
-const (
-	// TianYiSanMing 《三命通會》本宗：甲戊庚牛羊，六辛逢馬虎。
-	// 有完整推導支撐，故為預設。
-	TianYiSanMing TianYiSect = iota
-	// TianYiYeHuiTing 清代葉悔亭《六壬眎斯》改本：庚辛逢馬虎。
-	// 係人為調整——葉氏認為前人配置不夠平均而把庚自「甲戊庚牛羊」抽走，
-	// 無推導支撐。
-	TianYiYeHuiTing
-)
-
-// YinStemBladeSect 陰干有無羊刃。
-//
-// 位置不在爭議之列——羊刃為祿位下一支，十干皆順行，與 TerrainSect 無關。
-// 本項僅管「算不算」。
-type YinStemBladeSect uint8
-
-const (
-	// YinStemBladeMarked 陰干亦計刃，另標 Variant 供上層過濾（預設）
-	YinStemBladeMarked YinStemBladeSect = iota
-	// YinStemBladeNone 陰干無刃，市面實作多數如此
-	YinStemBladeNone
-)
-
-// Options 神煞的計算口徑。
-type Options struct {
-	// Categories 要計算哪些分類。nil 表示全部。
-	Categories []Category
-	Include    []Kind // 在 Categories 之外額外加入
-	Exclude    []Kind // 自結果中排除
-
-	BranchBase   BranchBaseSect
-	StemBase     StemBaseSect
-	TianYi       TianYiSect
-	YinStemBlade YinStemBladeSect
-}
-
-// Default 預設口徑：全部分類、各依慣用基準、天乙採三命通會本宗、陰干計刃。
-func Default() Options { return Options{} }
-
-// enabled 判斷某神煞是否納入計算。
-func (o Options) enabled(k Kind) bool {
-	for _, x := range o.Exclude {
-		if x == k {
-			return false
-		}
-	}
-	for _, x := range o.Include {
-		if x == k {
-			return true
-		}
-	}
-	if o.Categories == nil {
-		return true
-	}
-	for _, c := range o.Categories {
-		if c == k.Category() {
-			return true
-		}
-	}
-	return false
-}
-
 // target 一個應命中的地支及其雙軌標記。
 // target 一個應命中的干或支。
 //
@@ -127,7 +36,7 @@ func Detect(in Input, scan []ganzhi.SexagenaryIndex, opt Options) []Hit {
 		case BasisSelf:
 			// 柱本身：不查基準，逐一檢視各柱自己的干支組合
 			for i, sex := range scan {
-				if v, ok := selfHit(k, sex, in); ok {
+				if v, ok := selfHit(k, sex, in, opt); ok {
 					hits = append(hits, Hit{Kind: k, At: i, Basis: BasisSelf, Variant: v})
 				}
 			}
@@ -203,7 +112,7 @@ func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	}
 
 	if c == BasisDayStem || c == BasisYearStem {
-		switch opt.StemBase {
+		switch opt.sect(TopicStemBase) {
 		case StemBaseDay:
 			out[0] = BasisDayStem
 		case StemBaseYear:
@@ -220,7 +129,7 @@ func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	// 以整柱查者（空亡）與以地支查者受同一個旋鈕影響——選的是年／日這條軸，
 	// 不是「干或支」。
 	if c == BasisDayPillar || c == BasisYearPillar {
-		switch opt.BranchBase {
+		switch opt.sect(TopicBranchBase) {
 		case BranchBaseDay:
 			out[0] = BasisDayPillar
 		case BranchBaseYear:
@@ -238,7 +147,7 @@ func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 		out[0] = c
 		return 1
 	}
-	switch opt.BranchBase {
+	switch opt.sect(TopicBranchBase) {
 	case BranchBaseDay:
 		out[0] = BasisDayBranch
 	case BranchBaseYear:
@@ -323,16 +232,20 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 	case WenChangGuiRen:
 		return one(wenChangBranch[int(in.baseStem(b))%ganzhi.StemCount])
 
-	case YangRen:
+	case YangRen, FeiRen:
 		stem := in.baseStem(b)
 		v := VariantYangStem
 		if stem.Polarity() == ganzhi.Yin {
-			if opt.YinStemBlade == YinStemBladeNone {
+			if opt.sect(TopicYinBlade) == YinBladeNone {
 				return 0
 			}
 			v = VariantYinStem
 		}
-		out[0] = target{branch: offsetFromLu(stem, 1), variant: v}
+		br := bladeAt(stem, opt.sect(TopicBladeAt))
+		if k == FeiRen {
+			br = clash(br) // 飛刃即羊刃之衝，故隨羊刃的口徑連動
+		}
+		out[0] = target{branch: br, variant: v}
 		return 1
 
 	case TaiJiGuiRen:
@@ -350,8 +263,12 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return one(hongYanBranch[int(in.baseStem(b))%ganzhi.StemCount])
 
 	case FuXingGuiRen:
+		tbl := &fuXingBranches
+		if opt.sect(TopicFuXing) == FuXingShenFeng {
+			tbl = &fuXingShenFeng
+		}
 		n := 0
-		for _, br := range fuXingBranches[int(in.baseStem(b))%ganzhi.StemCount] {
+		for _, br := range tbl[int(in.baseStem(b))%ganzhi.StemCount] {
 			out[n] = target{branch: br}
 			n++
 		}
@@ -371,9 +288,6 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 
 	case AnLu:
 		return one(liuHe(luBranch[int(in.baseStem(b))%ganzhi.StemCount]))
-	case FeiRen:
-		return one(clash(offsetFromLu(in.baseStem(b), 1)))
-
 	case PanAn:
 		return one((trinityAt(in.baseBranch(b), ganzhi.Sick) + 1) % ganzhi.BranchCount)
 
@@ -405,10 +319,14 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		base := int(in.baseBranch(b))
 		fwd := ganzhi.BranchIndex((base + 3) % ganzhi.BranchCount)
 		bwd := ganzhi.BranchIndex((base + 9) % ganzhi.BranchCount)
-		out[0] = target{branch: fwd, variant: VariantGou}
-		out[1] = target{branch: bwd, variant: VariantJiao}
+		front, back := VariantGou, VariantJiao
+		if opt.sect(TopicGouJiao) == GouJiaoFrontIsJiao {
+			front, back = VariantJiao, VariantGou
+		}
+		out[0] = target{branch: fwd, variant: front}
+		out[1] = target{branch: bwd, variant: back}
 		if !in.yangMale() {
-			out[0].variant, out[1].variant = VariantJiao, VariantGou
+			out[0].variant, out[1].variant = out[1].variant, out[0].variant
 		}
 		return 2
 
@@ -460,7 +378,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 	case TianYiGuiRen:
 		stem := in.baseStem(b)
 		yang, yin := yangNoble[stem], yinNoble[stem]
-		if opt.TianYi == TianYiYeHuiTing {
+		if opt.sect(TopicTianYi) == TianYiYeHuiTing {
 			// 葉悔亭改本把庚自「甲戊庚牛羊」抽走，改與辛同歸馬虎
 			if stem == 6 {
 				yang, yin = yangNoble[7], yinNoble[7]
@@ -491,7 +409,7 @@ func isJiaoOrGe(b ganzhi.BranchIndex) bool {
 //
 // 十惡大敗、四廢只論主體那一柱。本套件不知道哪個元素是主體，照樣報構成，
 // 並以 Kind.SubjectOnly 標記，由呼叫方過濾。
-func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input) (Variant, bool) {
+func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input, opt Options) (Variant, bool) {
 	switch k {
 	case XueTang, CiGuan, ZhengYin:
 		// 〈論學堂詞館〉：「長生乃學堂之正位，如金命見辛巳，金長生在巳，
@@ -511,15 +429,28 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input) (Variant, bool) {
 		return VariantNone, sex.Branch() == soundTerrainAt(elem, n)
 
 	case TianLuoDiWang:
-		// 〈論天羅地網〉：「戌亥為天羅，辰巳為地網⋯火命人有天羅，
-		// 水土命人有地網，餘金木二命無之」
+		// 戌亥為天羅、辰巳為地網，兩派皆同；分歧在要不要納音條件。
+		// 〈論天羅地網〉與《命理探源》引《淵海子平》：「火命人有天羅，
+		// 水土命人有地網，餘金木二命無之」；《五行精紀·天羅地網歌》
+		// 「凡以戌亥為天羅，辰巳為地網」，通篇未及納音。
+		luo := sex.Branch() == 10 || sex.Branch() == 11
+		wang := sex.Branch() == 4 || sex.Branch() == 5
+		if opt.sect(TopicTianLuo) == TianLuoBranchOnly {
+			switch {
+			case luo:
+				return VariantTianLuo, true
+			case wang:
+				return VariantDiWang, true
+			}
+			return VariantNone, false
+		}
 		switch in.YearSound.Element() {
 		case ganzhi.Fire:
-			if b := sex.Branch(); b == 10 || b == 11 {
+			if luo {
 				return VariantTianLuo, true
 			}
 		case ganzhi.Water, ganzhi.Earth:
-			if b := sex.Branch(); b == 4 || b == 5 {
+			if wang {
 				return VariantDiWang, true
 			}
 		}

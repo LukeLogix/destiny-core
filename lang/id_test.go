@@ -67,10 +67,8 @@ var idEnums = []idEnum{
 	{"../shensha", "Variant", 13, func(i int) string { return shensha.Variant(i).ID() }},
 	{"../shensha", "Category", 4, func(i int) string { return shensha.Category(i).ID() }},
 	{"../shensha", "Tradition", 3, func(i int) string { return shensha.Tradition(i).ID() }},
-	{"../shensha", "BranchBaseSect", 4, func(i int) string { return shensha.BranchBaseSect(i).ID() }},
-	{"../shensha", "StemBaseSect", 4, func(i int) string { return shensha.StemBaseSect(i).ID() }},
-	{"../shensha", "TianYiSect", 2, func(i int) string { return shensha.TianYiSect(i).ID() }},
-	{"../shensha", "YinStemBladeSect", 2, func(i int) string { return shensha.YinStemBladeSect(i).ID() }},
+	{"../shensha", "Topic", 8, func(i int) string { return shensha.Topic(i).ID() }},
+	{"../shensha", "Sect", 21, func(i int) string { return shensha.Sect(i).ID() }},
 }
 
 func TestEnumIDsMatchConstantNames(t *testing.T) {

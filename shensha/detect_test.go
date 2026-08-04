@@ -121,7 +121,7 @@ func TestDetectIsDeterministic(t *testing.T) {
 // TestDetectSortedOrder 回傳須依 (Kind, At, Basis, Variant) 遞增。
 func TestDetectSortedOrder(t *testing.T) {
 	in := sampleInput()
-	got := Detect(in, sampleScan(), Options{BranchBase: BranchBaseBoth})
+	got := Detect(in, sampleScan(), Default().With(BranchBaseBoth))
 	for i := 1; i < len(got); i++ {
 		a, b := got[i-1], got[i]
 		less := a.Kind < b.Kind ||
@@ -138,7 +138,7 @@ func TestDetectSortedOrder(t *testing.T) {
 // 兩筆皆須保留並以 Basis 區分——那正是開啟該選項的目的。
 func TestBranchBaseBothKeepsBothSources(t *testing.T) {
 	in := sampleInput()
-	both := Detect(in, sampleScan(), Options{BranchBase: BranchBaseBoth})
+	both := Detect(in, sampleScan(), Default().With(BranchBaseBoth))
 
 	var day, year int
 	for _, h := range both {
@@ -173,7 +173,7 @@ func TestYinStemBladeOption(t *testing.T) {
 		t.Fatalf("陰干計刃時應得一筆且標為陰干刃，實得 %v", marked)
 	}
 
-	none := Detect(in, scan, Options{Include: []Kind{YangRen}, Categories: []Category{}, YinStemBlade: YinStemBladeNone})
+	none := Detect(in, scan, Options{Include: []Kind{YangRen}, Categories: []Category{}}.With(YinBladeNone))
 	if len(none) != 0 {
 		t.Errorf("陰干無刃時不應有命中，實得 %v", none)
 	}
@@ -181,10 +181,10 @@ func TestYinStemBladeOption(t *testing.T) {
 	// 陽干不受此選項影響：甲日主刃在卯
 	yang := Input{DayStem: 0, YearStem: 0, DayBranch: 9, YearBranch: 6, MonthBranch: 5}
 	maoScan := []ganzhi.SexagenaryIndex{3} // 丁卯：3%12=3(卯)
-	for _, sect := range []YinStemBladeSect{YinStemBladeMarked, YinStemBladeNone} {
-		h := Detect(yang, maoScan, Options{Include: []Kind{YangRen}, Categories: []Category{}, YinStemBlade: sect})
+	for _, sect := range []Sect{YinBladeMarked, YinBladeNone} {
+		h := Detect(yang, maoScan, Options{Include: []Kind{YangRen}, Categories: []Category{}}.With(sect))
 		if len(h) != 1 || h[0].Variant != VariantYangStem {
-			t.Errorf("口徑 %d 下陽干刃應恆為一筆且標陽干刃，實得 %v", sect, h)
+			t.Errorf("口徑 %s 下陽干刃應恆為一筆且標陽干刃，實得 %v", sect.ID(), h)
 		}
 	}
 }
@@ -201,19 +201,18 @@ func TestTianYiSectOption(t *testing.T) {
 
 	branches := func(opt Options) map[ganzhi.BranchIndex]bool {
 		out := map[ganzhi.BranchIndex]bool{}
-		for _, h := range Detect(in, all, Options{
-			Include: []Kind{TianYiGuiRen}, Categories: []Category{}, TianYi: opt.TianYi,
-		}) {
+		opt.Include, opt.Categories = []Kind{TianYiGuiRen}, []Category{}
+		for _, h := range Detect(in, all, opt) {
 			out[all[h.At].Branch()] = true
 		}
 		return out
 	}
 
-	sanMing := branches(Options{TianYi: TianYiSanMing})
+	sanMing := branches(Default().With(TianYiSanMing))
 	if !sanMing[1] || !sanMing[7] { // 丑、未
 		t.Errorf("三命通會本宗：庚貴應在丑未（甲戊庚牛羊），實得 %v", sanMing)
 	}
-	yeHui := branches(Options{TianYi: TianYiYeHuiTing})
+	yeHui := branches(Default().With(TianYiYeHuiTing))
 	if !yeHui[6] || !yeHui[2] { // 午、寅
 		t.Errorf("葉悔亭改本：庚貴應在午寅（庚辛逢馬虎），實得 %v", yeHui)
 	}
@@ -313,16 +312,14 @@ func TestTraditionsAreConsistent(t *testing.T) {
 func TestFixedBasisIgnoresToggle(t *testing.T) {
 	in, scan := sampleInput(), sampleScan()
 
-	for _, sect := range []BranchBaseSect{
-		BranchBaseCustomary, BranchBaseDay, BranchBaseYear, BranchBaseBoth,
-	} {
-		for _, h := range Detect(in, scan, Options{BranchBase: sect}) {
+	for _, sect := range TopicBranchBase.Sects() {
+		for _, h := range Detect(in, scan, Default().With(sect)) {
 			if !h.Kind.BasisIsFixed() {
 				continue
 			}
 			if h.Basis != h.Kind.CustomaryBasis() {
-				t.Errorf("口徑 %d 下 %s 以 %s 命中，該項只有 %s 有出處",
-					sect, h.Kind.ID(), h.Basis.ID(), h.Kind.CustomaryBasis().ID())
+				t.Errorf("口徑 %s 下 %s 以 %s 命中，該項只有 %s 有出處",
+					sect.ID(), h.Kind.ID(), h.Basis.ID(), h.Kind.CustomaryBasis().ID())
 			}
 		}
 	}
@@ -330,7 +327,7 @@ func TestFixedBasisIgnoresToggle(t *testing.T) {
 	// 反面：不受限者在 Both 之下確實會多出另一個基準的命中，
 	// 否則本測試可能只是因為旋鈕整個失效才通過
 	var other int
-	for _, h := range Detect(in, scan, Options{BranchBase: BranchBaseBoth}) {
+	for _, h := range Detect(in, scan, Default().With(BranchBaseBoth)) {
 		if !h.Kind.BasisIsFixed() && h.Basis != h.Kind.CustomaryBasis() {
 			other++
 		}
@@ -338,4 +335,128 @@ func TestFixedBasisIgnoresToggle(t *testing.T) {
 	if other == 0 {
 		t.Error("兩者皆查時完全沒有非慣用基準的命中——旋鈕可能整個失效")
 	}
+}
+
+// ── 流派主題機制 ──
+
+// TestTopicSectsWellFormed 主題與取法的表須自洽。
+//
+// topicSects 同時是計算來源與 API 的中繼資料來源，表若有洞，畫面上會出現
+// 選不了的選項，或選了沒反應的選項——兩者都不會有人回報。
+func TestTopicSectsWellFormed(t *testing.T) {
+	seen := map[Sect]Topic{}
+	for _, tp := range Topics() {
+		sects := tp.Sects()
+		if len(sects) < 2 {
+			t.Errorf("主題 %s 只有 %d 個取法——不足兩派就不該立為主題", tp.ID(), len(sects))
+		}
+		for _, s := range sects {
+			if s == SectDefault {
+				t.Errorf("主題 %s 含 SectDefault，該值保留給「未指定」", tp.ID())
+			}
+			if prev, dup := seen[s]; dup {
+				t.Errorf("取法 %s 同時屬於 %s 與 %s，常數須全域唯一",
+					s.ID(), prev.ID(), tp.ID())
+			}
+			seen[s] = tp
+			if got, ok := s.Topic(); !ok || got != tp {
+				t.Errorf("%s.Topic() 得 %v/%v，應為 %s", s.ID(), got.ID(), ok, tp.ID())
+			}
+		}
+	}
+	// 每個非預設的 Sect 常數都須被某個主題收錄，否則是宣告了卻選不到
+	for s := Sect(1); s < sectCount; s++ {
+		if _, ok := seen[s]; !ok {
+			t.Errorf("取法 %s 未被任何主題收錄", s.ID())
+		}
+	}
+}
+
+// TestOptionsSectFallback 未指定或指定錯主題時退回該主題的首選。
+func TestOptionsSectFallback(t *testing.T) {
+	var zero Options
+	for _, tp := range Topics() {
+		if got, want := zero.sect(tp), tp.Sects()[0]; got != want {
+			t.Errorf("零值下主題 %s 得 %s，應為首選 %s", tp.ID(), got.ID(), want.ID())
+		}
+	}
+	// 把福星的取法塞給天乙那格，該格須退回天乙的首選而非照用
+	bad := Options{}
+	bad.Sects[TopicTianYi] = FuXingShenFeng
+	if got := bad.sect(TopicTianYi); got != TianYiSanMing {
+		t.Errorf("塞入他主題的取法時得 %s，應退回首選 %s", got.ID(), TianYiSanMing.ID())
+	}
+}
+
+// TestWithSetsCorrectTopic With 須把取法放進它自己的主題。
+func TestWithSetsCorrectTopic(t *testing.T) {
+	opt := Default().With(BranchBaseBoth, FuXingShenFeng, TianLuoBranchOnly)
+	for _, want := range []Sect{BranchBaseBoth, FuXingShenFeng, TianLuoBranchOnly} {
+		tp, _ := want.Topic()
+		if got := opt.sect(tp); got != want {
+			t.Errorf("主題 %s 得 %s，應為 %s", tp.ID(), got.ID(), want.ID())
+		}
+	}
+	// 其餘主題不受影響
+	if got := opt.sect(TopicTianYi); got != TianYiSanMing {
+		t.Errorf("未指定的主題被連帶改成 %s", got.ID())
+	}
+}
+
+// TestTopicKindsAreAffected 主題宣告影響的 Kind 須真的受影響。
+//
+// topicKinds 供畫面標示「此項另有一派」，標了卻切不動，比不標更糟。
+func TestTopicKindsAreAffected(t *testing.T) {
+	// 掃描面須涵蓋分歧才算數：天乙只在庚日分派、天羅地網只在特定納音分派、
+	// 勾絞只在陰陽男女分派。固定一組輸入會讓本測試假通過。
+	var inputs []Input
+	for stem := 0; stem < ganzhi.StemCount; stem++ {
+		for _, male := range []bool{true, false} {
+			for _, snd := range []ganzhi.SoundIndex{0, 1, 2, 3, 4} {
+				inputs = append(inputs, Input{
+					DayStem: ganzhi.StemIndex(stem), YearStem: ganzhi.StemIndex(stem),
+					DayBranch: 9, YearBranch: 6, MonthBranch: 5,
+					IsMale: male, YearSound: snd,
+				})
+			}
+		}
+	}
+	all := make([]ganzhi.SexagenaryIndex, ganzhi.SexagenaryCount)
+	for i := range all {
+		all[i] = ganzhi.SexagenaryIndex(i)
+	}
+
+	for _, tp := range Topics() {
+		kinds := tp.Kinds()
+		if len(kinds) == 0 {
+			continue // 基準之爭影響面不限於特定幾個，另有測試
+		}
+		sects := tp.Sects()
+		var differs bool
+		for _, in := range inputs {
+			base := Detect(in, all, Options{Include: kinds, Categories: []Category{}}.With(sects[0]))
+			for _, s := range sects[1:] {
+				got := Detect(in, all, Options{Include: kinds, Categories: []Category{}}.With(s))
+				if !equalHits(base, got) {
+					differs = true
+				}
+			}
+		}
+		if !differs {
+			t.Errorf("主題 %s 宣告影響 %v，但掃遍十干、男女、五種納音後切換取法"+
+				"結果完全相同——若非實作漏接，就是這個主題根本不成立", tp.ID(), kinds)
+		}
+	}
+}
+
+func equalHits(a, b []Hit) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

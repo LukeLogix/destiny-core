@@ -116,37 +116,44 @@ var traditionIDs = [traditionCount]string{
 
 func (t Tradition) ID() string { return pickID(traditionIDs[:], int(t)) }
 
-var branchBaseSectIDs = [4]string{
-	BranchBaseCustomary: "customary",
-	BranchBaseDay:       "day",
-	BranchBaseYear:      "year",
-	BranchBaseBoth:      "both",
+var topicIDs = [topicCount]string{
+	TopicBranchBase: "branch_base",
+	TopicStemBase:   "stem_base",
+	TopicTianYi:     "tian_yi",
+	TopicBladeAt:    "blade_at",
+	TopicYinBlade:   "yin_blade",
+	TopicFuXing:     "fu_xing",
+	TopicTianLuo:    "tian_luo",
+	TopicGouJiao:    "gou_jiao",
 }
 
-func (s BranchBaseSect) ID() string { return pickID(branchBaseSectIDs[:], int(s)) }
+func (x Topic) ID() string { return pickID(topicIDs[:], int(x)) }
 
-var stemBaseSectIDs = [4]string{
-	StemBaseCustomary: "customary",
-	StemBaseDay:       "day",
-	StemBaseYear:      "year",
-	StemBaseBoth:      "both",
+var sectIDs = [sectCount]string{
+	SectDefault:         "sect_default",
+	BranchBaseCustomary: "branch_base_customary",
+	BranchBaseDay:       "branch_base_day",
+	BranchBaseYear:      "branch_base_year",
+	BranchBaseBoth:      "branch_base_both",
+	StemBaseCustomary:   "stem_base_customary",
+	StemBaseDay:         "stem_base_day",
+	StemBaseYear:        "stem_base_year",
+	StemBaseBoth:        "stem_base_both",
+	TianYiSanMing:       "tian_yi_san_ming",
+	TianYiYeHuiTing:     "tian_yi_ye_hui_ting",
+	BladeAtLuNext:       "blade_at_lu_next",
+	BladeAtProsperity:   "blade_at_prosperity",
+	YinBladeMarked:      "yin_blade_marked",
+	YinBladeNone:        "yin_blade_none",
+	FuXingHourStem:      "fu_xing_hour_stem",
+	FuXingShenFeng:      "fu_xing_shen_feng",
+	TianLuoBySound:      "tian_luo_by_sound",
+	TianLuoBranchOnly:   "tian_luo_branch_only",
+	GouJiaoFrontIsGou:   "gou_jiao_front_is_gou",
+	GouJiaoFrontIsJiao:  "gou_jiao_front_is_jiao",
 }
 
-func (s StemBaseSect) ID() string { return pickID(stemBaseSectIDs[:], int(s)) }
-
-var tianYiSectIDs = [2]string{
-	TianYiSanMing:   "san_ming",
-	TianYiYeHuiTing: "ye_hui_ting",
-}
-
-func (s TianYiSect) ID() string { return pickID(tianYiSectIDs[:], int(s)) }
-
-var yinStemBladeSectIDs = [2]string{
-	YinStemBladeMarked: "marked",
-	YinStemBladeNone:   "none",
-}
-
-func (s YinStemBladeSect) ID() string { return pickID(yinStemBladeSectIDs[:], int(s)) }
+func (x Sect) ID() string { return pickID(sectIDs[:], int(x)) }
 
 func pickID(tbl []string, i int) string {
 	if i < 0 || i >= len(tbl) {

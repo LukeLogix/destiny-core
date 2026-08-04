@@ -58,6 +58,8 @@ type bundle struct {
 	variants   [13]string
 	categories [4]string
 	traditions [3]string
+	topics     [8]string
+	sects      [21]string
 
 	warnTerm string
 	warnHour string
@@ -165,6 +167,16 @@ func (b *bundle) Category(c shensha.Category) Term {
 
 func (b *bundle) Tradition(t shensha.Tradition) Term {
 	return term(t.ID(), b.traditions[:], int(t))
+}
+
+// Topic 流派分歧的主題
+func (b *bundle) Topic(t shensha.Topic) Term {
+	return term(t.ID(), b.topics[:], int(t))
+}
+
+// Sect 某主題下的一種取法
+func (b *bundle) Sect(s shensha.Sect) Term {
+	return term(s.ID(), b.sects[:], int(s))
 }
 
 // Sexagenary 六十甲子由干支拼成
