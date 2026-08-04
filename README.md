@@ -170,7 +170,7 @@ CI 跑在自架 runner 上（`.github/workflows/ci.yml`）。
 
 ```
 internal/calendar/   曆法：內嵌節氣表 + VSOP87 自算 + 均時差
-ganzhi/              干支基礎：具名索引型別、五行生剋、沖刑合會
+ganzhi/              干支基礎：具名索引型別、五行生剋、沖刑合會、十二長生、納音
 bazi/                八字：四柱、十神、藏干、大運、旺衰
 lang/                zh-TW / zh-CN 文字，依賴計算層而非相反
 ```

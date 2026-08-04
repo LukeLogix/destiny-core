@@ -95,13 +95,13 @@ func TestAllLocalesCoverAllIndices(t *testing.T) {
 				t.Errorf("%s 缺五行 %d", loc, i)
 			}
 		}
-		for i := 0; i < bazi.TerrainCount; i++ {
-			if b.Terrain(bazi.Terrain(i)) == "" {
+		for i := 0; i < ganzhi.TerrainCount; i++ {
+			if b.Terrain(ganzhi.Terrain(i)) == "" {
 				t.Errorf("%s 缺十二長生 %d", loc, i)
 			}
 		}
-		for i := 0; i < bazi.SoundCount; i++ {
-			if b.Sound(bazi.SoundIndex(i)) == "" {
+		for i := 0; i < ganzhi.SoundCount; i++ {
+			if b.Sound(ganzhi.SoundIndex(i)) == "" {
 				t.Errorf("%s 缺納音 %d", loc, i)
 			}
 		}
@@ -236,7 +236,7 @@ func TestOutOfRangeIndexDoesNotPanic(t *testing.T) {
 	_ = b.Stem(ganzhi.StemIndex(200))
 	_ = b.Branch(ganzhi.BranchIndex(200))
 	_ = b.TenGod(bazi.TenGod(200))
-	_ = b.Sound(bazi.SoundIndex(200))
+	_ = b.Sound(ganzhi.SoundIndex(200))
 }
 
 // TestLocalizeIncludesRelations 干支關係須進入本地化輸出。

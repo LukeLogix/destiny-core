@@ -47,16 +47,6 @@ const (
 	TrueSolar                          // 再加均時差
 )
 
-// TerrainSect 十二長生的陰干順逆口徑
-type TerrainSect uint8
-
-const (
-	// TerrainYinReverse 陰干逆行：乙長生在午（預設，傳統派）
-	TerrainYinReverse TerrainSect = iota
-	// TerrainSameBirth 陰陽同生同死：乙長生在亥
-	TerrainSameBirth
-)
-
 // ChildLimitSect 起運流派
 type ChildLimitSect uint8
 
@@ -78,7 +68,7 @@ type Options struct {
 
 	// 排盤口徑
 	HiddenStem HiddenStemSect
-	Terrain    TerrainSect
+	Terrain    ganzhi.TerrainSect
 	ChildLimit ChildLimitSect
 
 	// 干支關係
@@ -94,7 +84,7 @@ func Default() Options {
 		LateZiKeepsDay: false,
 		SolarTime:      WallClock,
 		HiddenStem:     HiddenStemStandard,
-		Terrain:        TerrainYinReverse,
+		Terrain:        ganzhi.TerrainYinReverse,
 		ChildLimit:     ChildLimitDefault,
 		Relation:       ganzhi.DefaultRelationOptions(),
 	}

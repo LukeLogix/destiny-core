@@ -11,10 +11,10 @@ type Pillar struct {
 	Sexagenary ganzhi.SexagenaryIndex
 	Stem       ganzhi.StemIndex
 	Branch     ganzhi.BranchIndex
-	StemTenGod TenGod         // 天干對日主的十神；日柱為比肩（日主對自身）
-	Hidden     []HiddenTenGod // 地支藏干及各自十神
-	Terrain    Terrain        // 日主在此柱地支的十二長生狀態
-	Sound      SoundIndex     // 納音
+	StemTenGod TenGod            // 天干對日主的十神；日柱為比肩（日主對自身）
+	Hidden     []HiddenTenGod    // 地支藏干及各自十神
+	Terrain    ganzhi.Terrain    // 日主在此柱地支的十二長生狀態
+	Sound      ganzhi.SoundIndex // 納音
 }
 
 // BoundaryFlags 臨界標記。

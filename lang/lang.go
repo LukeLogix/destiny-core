@@ -33,8 +33,8 @@ type bundle struct {
 	branches  [ganzhi.BranchCount]string
 	elements  [ganzhi.ElementCount]string
 	tenGods   [bazi.TenGodCount]string
-	terrains  [bazi.TerrainCount]string
-	sounds    [bazi.SoundCount]string
+	terrains  [ganzhi.TerrainCount]string
+	sounds    [ganzhi.SoundCount]string
 	verdicts  [3]string
 	reasons   [8]string
 	polarity  [2]string
@@ -76,11 +76,11 @@ func (b *bundle) TenGod(g bazi.TenGod) string {
 	return pick(b.tenGods[:], int(g))
 }
 
-func (b *bundle) Terrain(t bazi.Terrain) string {
+func (b *bundle) Terrain(t ganzhi.Terrain) string {
 	return pick(b.terrains[:], int(t))
 }
 
-func (b *bundle) Sound(s bazi.SoundIndex) string {
+func (b *bundle) Sound(s ganzhi.SoundIndex) string {
 	return pick(b.sounds[:], int(s))
 }
 
