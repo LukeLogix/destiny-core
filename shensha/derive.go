@@ -53,12 +53,7 @@ func directionLast(b ganzhi.BranchIndex) ganzhi.BranchIndex {
 var luBranch = func() [ganzhi.StemCount]ganzhi.BranchIndex {
 	var out [ganzhi.StemCount]ganzhi.BranchIndex
 	for s := 0; s < ganzhi.StemCount; s++ {
-		for b := 0; b < ganzhi.BranchCount; b++ {
-			if ganzhi.TerrainOf(ganzhi.StemIndex(s), ganzhi.BranchIndex(b), ganzhi.TerrainYinReverse) == ganzhi.Officer {
-				out[s] = ganzhi.BranchIndex(b)
-				break
-			}
-		}
+		out[s] = branchAtTerrain(ganzhi.StemIndex(s), ganzhi.Officer)
 	}
 	return out
 }()
@@ -80,17 +75,31 @@ func offsetFromLu(stem ganzhi.StemIndex, n int) ganzhi.BranchIndex {
 // 坊間另有「食神的臨官位」一說，於丙丁破功——丙的食神為戊、丁的食神為己，
 // 而土的寄宮口徑（火土同宮 vs 水土同宮）在此分歧。《命理探源》的按語即
 // 於該二干改用長生位並採水土同宮以迴避。本式無此例外。
-func wenChangBranch(stem ganzhi.StemIndex) ganzhi.BranchIndex {
-	want := ganzhi.Sick
-	if stem.Polarity() == ganzhi.Yin {
-		want = ganzhi.LongLife
+var wenChangBranch = func() [ganzhi.StemCount]ganzhi.BranchIndex {
+	var out [ganzhi.StemCount]ganzhi.BranchIndex
+	for s := 0; s < ganzhi.StemCount; s++ {
+		stem := ganzhi.StemIndex(s)
+		want := ganzhi.Sick
+		if stem.Polarity() == ganzhi.Yin {
+			want = ganzhi.LongLife
+		}
+		out[s] = branchAtTerrain(stem, want)
 	}
+	return out
+}()
+
+// branchAtTerrain 反查：該干的指定長生位落在哪一支。
+//
+// 十二長生與十二支一一對應，故必然找得到；找不到即為 TerrainOf 出錯，
+// 此時 panic 勝於靜默回傳子——後者會讓整組神煞悄悄錯位。
+// 本函式只在套件初始化時呼叫，panic 會在載入階段就暴露，不會留到執行期。
+func branchAtTerrain(stem ganzhi.StemIndex, want ganzhi.Terrain) ganzhi.BranchIndex {
 	for b := 0; b < ganzhi.BranchCount; b++ {
 		if ganzhi.TerrainOf(stem, ganzhi.BranchIndex(b), ganzhi.TerrainYinReverse) == want {
 			return ganzhi.BranchIndex(b)
 		}
 	}
-	return 0 // 不可達：十二長生必然涵蓋十二支
+	panic("shensha: terrain does not cover all branches")
 }
 
 // ── 天乙貴人 ──
@@ -114,7 +123,13 @@ func layoutNoble(start, dir int) [ganzhi.StemCount]ganzhi.BranchIndex {
 
 	var out [ganzhi.StemCount]ganzhi.BranchIndex
 	b, s, firstPass := start, 0, true
-	for s < ganzhi.StemCount {
+	// 上界：每圈至多跳過辰、戌、天空、起貴支四支，兩圈可佈的位數為
+	// 9 + 8 = 17，足以容納十干。設界只為防止規則日後變動時陷入無窮迴圈——
+	// 本函式在套件初始化時執行，無窮迴圈會使匯入直接卡死。
+	for guard := 0; s < ganzhi.StemCount; guard++ {
+		if guard > 2*ganzhi.BranchCount {
+			panic("shensha: noble layout could not place all stems; check the skip rules")
+		}
 		skip := b == 4 || b == 10 || // 辰為天羅、戌為地網，貴人不臨
 			b == clash || // 天空，貴人有獨無對
 			(!firstPass && b == start) // 起貴之所，貴人不再臨

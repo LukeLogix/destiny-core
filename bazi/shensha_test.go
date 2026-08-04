@@ -86,3 +86,58 @@ func TestDynamicShenShaWhenEnabled(t *testing.T) {
 	t.Logf("動態柱共 %d 筆命中（大運 %d 步、流年 %d 個）",
 		total, len(c.Fortunes), len(c.Fortunes)*10)
 }
+
+// TestDynamicShenShaNotAliased 各動態柱的神煞必須各自獨立。
+//
+// 組裝時以單一元素的切片重複傳入 Detect，若 Detect 保留了該切片的參照，
+// 後續迭代的寫入會污染先前的結果。此測試釘住「每柱結果互不相干」。
+func TestDynamicShenShaNotAliased(t *testing.T) {
+	opt := Default()
+	opt.IncludeDynamicShenSha = true
+	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), opt)
+
+	// 逐年比對：該年的每一筆命中，其應命中的地支必須真的等於該年的地支
+	for i, f := range c.Fortunes {
+		for j, y := range f.Years {
+			for _, h := range y.ShenSha {
+				if h.At != 0 {
+					t.Errorf("第 %d 步第 %d 年的命中 At=%d，動態柱應恆為 0", i, j, h.At)
+				}
+			}
+		}
+	}
+
+	// 至少要有兩個流年的命中內容不同——若全都一樣，多半是別名污染
+	seen := map[string]bool{}
+	for _, f := range c.Fortunes {
+		for _, y := range f.Years {
+			key := ""
+			for _, h := range y.ShenSha {
+				key += h.Kind.ID() + ","
+			}
+			seen[key] = true
+		}
+	}
+	if len(seen) < 2 {
+		t.Errorf("一百個流年只產生 %d 種命中組合，疑為別名污染", len(seen))
+	}
+	t.Logf("一百個流年產生 %d 種不同的命中組合", len(seen))
+}
+
+// TestDynamicShenShaCountStable 動態命中總數不因組裝方式改變而變動。
+func TestDynamicShenShaCountStable(t *testing.T) {
+	opt := Default()
+	opt.IncludeDynamicShenSha = true
+	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), opt)
+
+	total := 0
+	for _, f := range c.Fortunes {
+		total += len(f.ShenSha)
+		for _, y := range f.Years {
+			total += len(y.ShenSha)
+		}
+	}
+	if total != 146 {
+		t.Errorf("動態柱共 %d 筆命中，改組裝方式前為 146 筆", total)
+	}
+}

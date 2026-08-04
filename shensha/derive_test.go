@@ -164,7 +164,7 @@ func TestJinYuAgainstClassics(t *testing.T) {
 func TestWenChangAgainstClassics(t *testing.T) {
 	want := [10]ganzhi.BranchIndex{si, wu, shen, you, shen, you, hai, zi, yin, mao}
 	for s, w := range want {
-		if got := wenChangBranch(ganzhi.StemIndex(s)); got != w {
+		if got := wenChangBranch[s]; got != w {
 			t.Errorf("%s 文昌推導得 %s，典籍為 %s", stemName[s], branchName[got], branchName[w])
 		}
 	}

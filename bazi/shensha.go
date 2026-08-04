@@ -42,39 +42,23 @@ func (c *Chart) detectShenSha(opt Options) {
 		return
 	}
 
-	// 大運：十步各為一柱
-	steps := make([]ganzhi.SexagenaryIndex, len(c.Fortunes))
-	for i, f := range c.Fortunes {
-		steps[i] = f.Sexagenary
-	}
-	for i := range c.Fortunes {
-		c.Fortunes[i].ShenSha = pickAt(shensha.Detect(in, steps, opt.ShenSha), i)
-	}
+	// 每個動態柱各自掃描自己一柱即可——神煞是「基準對上這一柱」的關係，
+	// 把整組丟進去再挑出目標那筆，會做十倍的白工。
+	// 單元素掃描的另一好處是 At 恆為 0，正合 D-34：位置已由所在結構隱含。
+	one := make([]ganzhi.SexagenaryIndex, 1)
 
-	// 流年：每步各自成組，太歲另作為該年的基準
 	for i := range c.Fortunes {
-		years := make([]ganzhi.SexagenaryIndex, len(c.Fortunes[i].Years))
-		for j, y := range c.Fortunes[i].Years {
-			years[j] = y.Sexagenary
-		}
+		one[0] = c.Fortunes[i].Sexagenary
+		c.Fortunes[i].ShenSha = shensha.Detect(in, one, opt.ShenSha)
+
 		for j := range c.Fortunes[i].Years {
+			// 太歲類神煞以該年干支為基準，故逐年重設
 			yin := in
 			yin.Annual = c.Fortunes[i].Years[j].Sexagenary
 			yin.HasAnnual = true
-			c.Fortunes[i].Years[j].ShenSha = pickAt(shensha.Detect(yin, years, opt.ShenSha), j)
-		}
-	}
-}
 
-// pickAt 自一次掃描的結果中取出落在第 at 個元素者，並把 At 歸零——
-// 命中已掛在該柱的結構上，位置由所在處隱含，不需再帶索引。
-func pickAt(hits []shensha.Hit, at int) []shensha.Hit {
-	var out []shensha.Hit
-	for _, h := range hits {
-		if h.At == at {
-			h.At = 0
-			out = append(out, h)
+			one[0] = c.Fortunes[i].Years[j].Sexagenary
+			c.Fortunes[i].Years[j].ShenSha = shensha.Detect(yin, one, opt.ShenSha)
 		}
 	}
-	return out
 }

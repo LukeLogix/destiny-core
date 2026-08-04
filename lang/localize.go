@@ -72,10 +72,12 @@ type LocalizedRelation struct {
 // Basis 與 Variant 一併交出：BranchBase 開「兩者皆查」時同一柱可自年支與
 // 日支各命中一次，上層須能分辨來源；天乙的陽貴陰貴、羊刃的陽干陰干刃亦然。
 type LocalizedShenSha struct {
-	Kind    Term `json:"kind"`
-	At      int  `json:"at"`
-	Basis   Term `json:"basis"`
-	Variant Term `json:"variant,omitempty"`
+	Kind  Term `json:"kind"`
+	At    int  `json:"at"`
+	Basis Term `json:"basis"`
+	// Variant 用指標——omitempty 對 struct 無效，用值型別會讓無雙軌之分的
+	// 神煞也帶一個 {"id":"none","name":""} 的雜訊欄位。
+	Variant *Term `json:"variant,omitempty"`
 
 	// Category 收錄分類，供上層分組呈現
 	Category Term `json:"category"`
@@ -223,12 +225,21 @@ func localizeShenSha(b *bundle, hits []shensha.Hit) []LocalizedShenSha {
 			Kind:      b.ShenSha(h.Kind),
 			At:        h.At,
 			Basis:     b.Basis(h.Basis),
-			Variant:   b.Variant(h.Variant),
+			Variant:   variantTerm(b, h.Variant),
 			Category:  b.Category(h.Kind.Category()),
 			Tradition: b.Tradition(h.Kind.Tradition()),
 		})
 	}
 	return out
+}
+
+// variantTerm 無雙軌之分者回 nil，讓該欄位自 JSON 中消失。
+func variantTerm(b *bundle, v shensha.Variant) *Term {
+	if v == shensha.VariantNone {
+		return nil
+	}
+	t := b.Variant(v)
+	return &t
 }
 
 func localizePillar(b *bundle, p bazi.Pillar) LocalizedPillar {

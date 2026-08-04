@@ -95,12 +95,17 @@ type target struct {
 func Detect(in Input, scan []ganzhi.SexagenaryIndex, opt Options) []Hit {
 	hits := make([]Hit, 0, len(scan))
 
+	var bases [maxBases]Basis
+	var targets [maxTargets]target
+
 	for k := Kind(0); k < KindCount; k++ {
 		if !opt.enabled(k) {
 			continue
 		}
-		for _, b := range basesFor(k, opt) {
-			for _, t := range targetsFor(k, b, in, opt) {
+		nb := basesFor(k, opt, &bases)
+		for _, b := range bases[:nb] {
+			nt := targetsFor(k, b, in, opt, &targets)
+			for _, t := range targets[:nt] {
 				for i, sex := range scan {
 					if sex.Branch() == t.branch {
 						hits = append(hits, Hit{Kind: k, At: i, Basis: b, Variant: t.variant})
@@ -126,24 +131,36 @@ func Detect(in Input, scan []ganzhi.SexagenaryIndex, opt Options) []Hit {
 	return hits
 }
 
-// basesFor 該神煞此次要用哪些基準。
+// 上限：基準最多兩個（BranchBaseBoth），應命中的地支最多兩個（天乙的陽貴陰貴）。
+//
+// 寫入呼叫端提供的緩衝而非回傳切片——Detect 在開啟大運流年時會被呼叫上百次，
+// 每次配置兩個小切片即為數千次無謂的配置。
+const (
+	maxBases   = 2
+	maxTargets = 2
+)
+
+// basesFor 該神煞此次要用哪些基準，回傳寫入的個數。
 //
 // 只有以地支查者受 BranchBase 影響；以日干查者不在此列。
-func basesFor(k Kind, opt Options) []Basis {
+func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	c := k.CustomaryBasis()
 	if c != BasisDayBranch && c != BasisYearBranch {
-		return []Basis{c}
+		out[0] = c
+		return 1
 	}
 	switch opt.BranchBase {
 	case BranchBaseDay:
-		return []Basis{BasisDayBranch}
+		out[0] = BasisDayBranch
 	case BranchBaseYear:
-		return []Basis{BasisYearBranch}
+		out[0] = BasisYearBranch
 	case BranchBaseBoth:
-		return []Basis{BasisDayBranch, BasisYearBranch}
+		out[0], out[1] = BasisDayBranch, BasisYearBranch
+		return 2
 	default:
-		return []Basis{c}
+		out[0] = c
 	}
+	return 1
 }
 
 // baseBranch 取指定基準的地支值
@@ -166,9 +183,12 @@ func (in Input) baseStem(b Basis) ganzhi.StemIndex {
 	return in.DayStem
 }
 
-// targetsFor 算出該神煞在此基準下應命中的地支。
-func targetsFor(k Kind, b Basis, in Input, opt Options) []target {
-	one := func(br ganzhi.BranchIndex) []target { return []target{{branch: br}} }
+// targetsFor 算出該神煞在此基準下應命中的地支，回傳寫入的個數。
+func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target) int {
+	one := func(br ganzhi.BranchIndex) int {
+		out[0] = target{branch: br}
+		return 1
+	}
 
 	switch k {
 	// ── 三合局系：同一個東西的八個取位 ──
@@ -201,18 +221,19 @@ func targetsFor(k Kind, b Basis, in Input, opt Options) []target {
 	case JinYu:
 		return one(offsetFromLu(in.baseStem(b), 2))
 	case WenChangGuiRen:
-		return one(wenChangBranch(in.baseStem(b)))
+		return one(wenChangBranch[int(in.baseStem(b))%ganzhi.StemCount])
 
 	case YangRen:
 		stem := in.baseStem(b)
 		v := VariantYangStem
 		if stem.Polarity() == ganzhi.Yin {
 			if opt.YinStemBlade == YinStemBladeNone {
-				return nil
+				return 0
 			}
 			v = VariantYinStem
 		}
-		return []target{{branch: offsetFromLu(stem, 1), variant: v}}
+		out[0] = target{branch: offsetFromLu(stem, 1), variant: v}
+		return 1
 
 	case TianYiGuiRen:
 		stem := in.baseStem(b)
@@ -223,10 +244,9 @@ func targetsFor(k Kind, b Basis, in Input, opt Options) []target {
 				yang, yin = yangNoble[7], yinNoble[7]
 			}
 		}
-		return []target{
-			{branch: yang, variant: VariantYangNoble},
-			{branch: yin, variant: VariantYinNoble},
-		}
+		out[0] = target{branch: yang, variant: VariantYangNoble}
+		out[1] = target{branch: yin, variant: VariantYinNoble}
+		return 2
 	}
-	return nil
+	return 0
 }
