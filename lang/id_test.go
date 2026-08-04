@@ -13,6 +13,7 @@ import (
 
 	"github.com/LukeLogix/destiny-core/bazi"
 	"github.com/LukeLogix/destiny-core/ganzhi"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 // 列舉的穩定識別字必須與其 Go 常數名一致。
@@ -60,6 +61,15 @@ var idEnums = []idEnum{
 	{"../bazi", "StrategyID", 2, func(i int) string { return bazi.StrategyID(i).ID() }},
 	{"../bazi", "ReasonCode", 8, func(i int) string { return bazi.ReasonCode(i).ID() }},
 	{"../bazi", "Consensus", 3, func(i int) string { return bazi.Consensus(i).ID() }},
+
+	{"../shensha", "Kind", int(shensha.KindCount), func(i int) string { return shensha.Kind(i).ID() }},
+	{"../shensha", "Basis", 8, func(i int) string { return shensha.Basis(i).ID() }},
+	{"../shensha", "Variant", 5, func(i int) string { return shensha.Variant(i).ID() }},
+	{"../shensha", "Category", 4, func(i int) string { return shensha.Category(i).ID() }},
+	{"../shensha", "Tradition", 3, func(i int) string { return shensha.Tradition(i).ID() }},
+	{"../shensha", "BranchBaseSect", 4, func(i int) string { return shensha.BranchBaseSect(i).ID() }},
+	{"../shensha", "TianYiSect", 2, func(i int) string { return shensha.TianYiSect(i).ID() }},
+	{"../shensha", "YinStemBladeSect", 2, func(i int) string { return shensha.YinStemBladeSect(i).ID() }},
 }
 
 func TestEnumIDsMatchConstantNames(t *testing.T) {

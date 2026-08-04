@@ -6,6 +6,7 @@ import (
 
 	"github.com/LukeLogix/destiny-core/ganzhi"
 	"github.com/LukeLogix/destiny-core/internal/calendar"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 // DecadeFortune 大運，每步十年。
@@ -18,6 +19,9 @@ type DecadeFortune struct {
 	StartYear  int
 	Forward    bool         // 順排或逆排
 	Years      []AnnualYear // 本步涵蓋的流年
+
+	// ShenSha 僅 Options.IncludeDynamicShenSha 為 true 時填入
+	ShenSha []shensha.Hit
 }
 
 // AnnualYear 流年——以干支年為準。
@@ -28,6 +32,9 @@ type AnnualYear struct {
 	Year       int
 	Sexagenary ganzhi.SexagenaryIndex
 	StemTenGod TenGod
+
+	// ShenSha 僅 Options.IncludeDynamicShenSha 為 true 時填入
+	ShenSha []shensha.Hit
 }
 
 // fortuneSteps 大運步數，涵蓋約百年。

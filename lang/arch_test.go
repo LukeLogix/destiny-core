@@ -17,7 +17,7 @@ import (
 // 出現中文無妨；但天干地支十神這類術語一旦寫進計算層，i18n 即告破功。
 var forbiddenTerms = []string{
 	"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸",
-	"子", "丑", "寅", "卯", "巳", "午", "未", "申", "酉", "戌", "亥",
+	"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥",
 	"比肩", "劫財", "劫财", "食神", "傷官", "伤官",
 	"偏財", "偏财", "正財", "正财", "七殺", "七杀",
 	"正官", "偏印", "正印",
@@ -27,7 +27,7 @@ var forbiddenTerms = []string{
 }
 
 // computeLayers 計算層的套件目錄，相對於本測試檔
-var computeLayers = []string{"../bazi", "../ganzhi", "../internal/calendar"}
+var computeLayers = []string{"../bazi", "../ganzhi", "../shensha", "../internal/calendar"}
 
 // TestComputeLayersContainNoTerminology 計算層的字串字面量不得含命理術語。
 //

@@ -110,6 +110,8 @@ func Compute(b Birth, opt Options) (*Chart, error) {
 		c.Strengths = append(c.Strengths, s.Evaluate(in))
 	}
 
+	c.detectShenSha(opt)
+
 	return c, nil
 }
 

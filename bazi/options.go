@@ -6,6 +6,7 @@ import (
 
 	"github.com/LukeLogix/destiny-core/ganzhi"
 	"github.com/LukeLogix/destiny-core/internal/calendar"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 // Gender 性別。大運順逆依「陽男陰女順排、陰男陽女逆排」而定，故為必填。
@@ -76,6 +77,17 @@ type Options struct {
 
 	// 旺衰策略。nil 時用預設的兩套——兩者判定不一致本身即為有用訊號。
 	Strengths []Strength
+
+	// 神煞口徑
+	ShenSha shensha.Options
+
+	// IncludeDynamicShenSha 大運、流年是否一併計算神煞。預設 false——
+	// 十步大運乘十個流年加原局四柱共一百一十四柱，多數使用者只看原局。
+	//
+	// 注意：以太歲為基準的神煞（shensha.CategoryAnnual）本項為 false 時
+	// 一律不產生命中。此非缺陷，係「預設不算大運流年」與「太歲類離開流年
+	// 即無意義」兩者的必然結果。
+	IncludeDynamicShenSha bool
 }
 
 // Default 主流口徑：早子時換日、鐘面時間、標準藏干、陰干逆行。

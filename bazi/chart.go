@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/LukeLogix/destiny-core/ganzhi"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 // Pillar 一柱：干支及其衍生資訊
@@ -45,6 +46,9 @@ type Chart struct {
 	Fortunes     []DecadeFortune // 大運，每步含其涵蓋的流年
 	FortuneStart time.Time       // 起運時刻，四種流派可差達一整天，故明列供稽核
 	Strengths    []StrengthResult
+
+	// ShenSha 原局四柱的神煞。不含以太歲為基準者——那些只在流年層有意義。
+	ShenSha []shensha.Hit
 }
 
 // DayMaster 日主，即日柱天干——十神皆以此為參照。
