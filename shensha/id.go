@@ -38,8 +38,17 @@ var kindIDs = [KindCount]string{
 	CiGuan:         "ci_guan",
 	ZhengYin:       "zheng_yin",
 	TianLuoDiWang:  "tian_luo_di_wang",
+	TianChuGuiRen:  "tian_chu_gui_ren",
+	FuXingGuiRen:   "fu_xing_gui_ren",
+	HongYan:        "hong_yan",
+	HongLuan:       "hong_luan",
+	TianXi:         "tian_xi",
 	ShiEDaBai:      "shi_eda_bai",
 	SiFei:          "si_fei",
+	KuiGang:        "kui_gang",
+	TianShe:        "tian_she",
+	JinShen:        "jin_shen",
+	XunKong:        "xun_kong",
 	SanQi:          "san_qi",
 	TaiSui:         "tai_sui",
 	TaiYang:        "tai_yang",
@@ -66,6 +75,8 @@ var basisIDs = [basisCount]string{
 	BasisSelf:        "self",
 	BasisChart:       "chart",
 	BasisAnnual:      "annual",
+	BasisDayPillar:   "day_pillar",
+	BasisYearPillar:  "year_pillar",
 }
 
 func (b Basis) ID() string { return pickID(basisIDs[:], int(b)) }

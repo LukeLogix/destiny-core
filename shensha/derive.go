@@ -333,3 +333,153 @@ func xunKong(sex ganzhi.SexagenaryIndex) (ganzhi.BranchIndex, ganzhi.BranchIndex
 	head := int(sex) - int(sex.Stem()) // 該旬之首（旬首必為甲）
 	return wrap(head + 10), wrap(head + 11)
 }
+
+// ── 第三批：食神衍生、鸞喜、柱本身 ──
+
+// sexFrom 由干支反查六十甲子序位。
+//
+// 十干十二支同陰陽者必有唯一組合。手算這個序位是錯誤高發處——四廢初版
+// 八組錯了四組——故一律由此函式算，不寫死。
+func sexFrom(stem ganzhi.StemIndex, branch ganzhi.BranchIndex) ganzhi.SexagenaryIndex {
+	for x := 0; x < ganzhi.SexagenaryCount; x++ {
+		if x%ganzhi.StemCount == int(stem) && x%ganzhi.BranchCount == int(branch) {
+			return ganzhi.SexagenaryIndex(x)
+		}
+	}
+	panic("shensha: stem and branch have opposite polarity")
+}
+
+// eatGod 食神：我生者而同陰陽。甲之食神為丙、癸之食神為乙。
+func eatGod(s ganzhi.StemIndex) ganzhi.StemIndex {
+	e := (int(s)/2 + 1) % ganzhi.ElementCount
+	return ganzhi.StemIndex(e*2 + int(s)%2)
+}
+
+// ── 天廚貴人 ──
+//
+// 《五行精紀》〈天廚格〉：「此以**食神見祿**推之：甲丙愛行雙女遊（巳），
+// 乙丁獅子（午）己金牛（酉），戊樂陰陽（申）庚亥地，癸來天蠍（卯）
+// 壬人馬（寅），辛到寶瓶（子）福自由」。原文自述取法，故直接推導。
+var tianChuBranch = func() [ganzhi.StemCount]ganzhi.BranchIndex {
+	var out [ganzhi.StemCount]ganzhi.BranchIndex
+	for s := 0; s < ganzhi.StemCount; s++ {
+		out[s] = luBranch[eatGod(ganzhi.StemIndex(s))]
+	}
+	return out
+}()
+
+// ── 五鼠遁：日干起子時之干 ──
+//
+// 甲己還加甲、乙庚丙作初、丙辛從戊起、丁壬庚子居、戊癸壬子頭。
+// 即子時干為 (日干 mod 5) × 2。
+func hourStemStart(day ganzhi.StemIndex) ganzhi.StemIndex {
+	return ganzhi.StemIndex((int(day) % 5) * 2)
+}
+
+// hourStemAt 該日干在指定時支的遁干
+func hourStemAt(day ganzhi.StemIndex, b ganzhi.BranchIndex) ganzhi.StemIndex {
+	return ganzhi.StemIndex((int(hourStemStart(day)) + int(b)) % ganzhi.StemCount)
+}
+
+// ── 福星貴人 ──
+//
+// 《協紀辨方書》〈福星貴人〉：「日干生時干曰福星貴人⋯甲日寅時必為丙寅，
+// 乙日丑時亥時必為丁丑丁亥⋯**皆本日日干之食神子孫**」，並逐日列出結果。
+// 《三命通會》同章亦云「遁得本旬中真食神」，機制一致。
+//
+// 故取法為：該日干遁時，遁得食神的那些時支。丙、乙兩干各有兩個時支
+// （十干配十二支，兩支的遁干重複），餘皆一個。
+//
+// 《神峰通考》另載歌訣「甲丙相邀入虎鄉⋯戊申己未丁亥遇，乙癸逢牛福祿昌」，
+// 其丁作亥、癸作丑與本推導的酉、卯不合。該歌《三命通會》明言「是以年論」
+// 且「若以日遁則非」，故不採，分歧記於決策日誌。
+var fuXingBranches = func() [ganzhi.StemCount][]ganzhi.BranchIndex {
+	var out [ganzhi.StemCount][]ganzhi.BranchIndex
+	for s := 0; s < ganzhi.StemCount; s++ {
+		stem := ganzhi.StemIndex(s)
+		want := eatGod(stem)
+		for b := 0; b < ganzhi.BranchCount; b++ {
+			if hourStemAt(stem, ganzhi.BranchIndex(b)) == want {
+				out[s] = append(out[s], ganzhi.BranchIndex(b))
+			}
+		}
+	}
+	return out
+}()
+
+// ── 紅艷煞 ──
+//
+// 《神峰通考》〈紅艷煞〉：「多情多欲少人知，六丙逢寅辛見雞。癸臨申上
+// 丁見未，眉開眼笑樂嬉嬉。甲乙午申庚見戌，世間只是眾人妻。戊己怕辰
+// 壬怕子，祿馬相逢作路妓」。
+//
+// 此項查無取法自述，只有結果。與祿、長生、沐浴諸位皆對不上，故照抄成表——
+// 抄表是不得已，不是偷懶：有機制就推導，只有結果時抄表並註明無機制可依。
+var hongYanBranch = [ganzhi.StemCount]ganzhi.BranchIndex{
+	0: 6,  // 甲：午
+	1: 8,  // 乙：申
+	2: 2,  // 丙：寅
+	3: 7,  // 丁：未
+	4: 4,  // 戊：辰
+	5: 4,  // 己：辰
+	6: 10, // 庚：戌
+	7: 9,  // 辛：酉
+	8: 0,  // 壬：子
+	9: 8,  // 癸：申
+}
+
+// ── 紅鸞、天喜 ──
+//
+// 《神峰通考》〈鸞喜二德解神歌〉：「卯起紅鸞逆數通，欲知天喜是相衝」——
+// 子年紅鸞在卯，年支每進一位紅鸞退一位；天喜為紅鸞之對衝。
+//
+// 《三命通會》另有「天喜神：春戌夏丑秋辰冬未」，同名而異物，本套件不收，
+// 分歧記於決策日誌。
+func hongLuan(year ganzhi.BranchIndex) ganzhi.BranchIndex {
+	return wrap(3 - int(year))
+}
+
+// ── 魁罡 ──
+//
+// 《三命通會》：「【詩曰】壬辰庚戌與庚辰戊戌，魁罡四座神，不見財官刑煞并，
+// 身行旺地貴無倫」，並自按「此格俱用辰戌，獨天干少異，內庚辰二日既曰日德
+// 又曰魁罡」。四日明列，不存版本之爭。
+//
+// 不設 SubjectOnly：同章另云「魁罡四日最為先，**疊疊相逢掌大權**」，
+// 明白肯定四柱重見有義，與十惡大敗、四廢只論日柱者不同。
+var kuiGangSex = []ganzhi.SexagenaryIndex{
+	sexFrom(8, 4),  // 壬辰
+	sexFrom(6, 10), // 庚戌
+	sexFrom(6, 4),  // 庚辰
+	sexFrom(4, 10), // 戊戌
+}
+
+// ── 天赦 ──
+//
+// 《三命通會》〈天赦日〉、《五行精紀》引《三歷會同》、《淵海子平》、
+// 《神峰通考》、《命理探源》引《天寶曆》、《協紀辨方書》引《曆例》
+// 六書一致：「春戊寅、夏甲午、秋戊申、冬甲子」，無分歧。
+//
+// 《天寶曆》述其理：「天之生育甲與戊，地之成立子午寅申，故以甲戊配成天赦」。
+//
+// 索引同 directionGroup：冬 0、春 1、夏 2、秋 3。
+var tianSheSex = [4]ganzhi.SexagenaryIndex{
+	0: sexFrom(0, 0), // 冬（亥子丑）：甲子
+	1: sexFrom(4, 2), // 春（寅卯辰）：戊寅
+	2: sexFrom(0, 6), // 夏（巳午未）：甲午
+	3: sexFrom(4, 8), // 秋（申酉戌）：戊申
+}
+
+// ── 金神 ──
+//
+// 《三命通會》〈金神〉：「金神者破敗之神，即的煞，止有三時，乃癸酉、己巳、
+// 乙丑」；《淵海子平》〈論金神〉、《神峰通考》所載三時全同。
+//
+// 《三命通會》另加「此格六甲日為主」的限制，《淵海子平》與《神峰通考》
+// 皆不設此限，且神峰所舉命例正是己未日。金神格成立與否是格局判斷，
+// 不在神煞偵測的粒度內，故此處只報該柱的干支構成，不加日干條件。
+var jinShenSex = []ganzhi.SexagenaryIndex{
+	sexFrom(9, 9), // 癸酉
+	sexFrom(5, 5), // 己巳
+	sexFrom(1, 1), // 乙丑
+}

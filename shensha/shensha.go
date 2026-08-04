@@ -29,6 +29,8 @@ const (
 	BasisSelf                     // 柱本身的干支組合，如魁罡
 	BasisChart                    // 全盤性，與 scan 無關
 	BasisAnnual                   // 以太歲（流年）查，僅 CategoryAnnual 適用
+	BasisDayPillar                // 以日柱整組干支查，如空亡須知旬
+	BasisYearPillar               // 以年柱整組干支查
 
 	basisCount
 )

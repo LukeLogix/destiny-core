@@ -46,7 +46,11 @@ func sampleScan() []ganzhi.SexagenaryIndex {
 //	        天德合丙無。德秀巳酉丑月德庚辛、秀乙庚——庚辛乙庚共五筆
 //	年支午：元辰丑無、勾絞陽男取前三為酉（日柱）、暗金的煞在巳（月、時）
 //	年納音路旁土：土命地網在辰巳（月、時）；學堂申、詞館亥、正印辰皆無
-//	柱本身：辛巳祿酉入甲戌旬之空亡，十惡大敗（月、時兩柱）；四廢夏取壬子癸亥，無
+//	日干乙（食神丁）：天廚在丁祿午（年柱）；福星取遁得丁之時支為丑亥，無
+//	年支午：紅鸞自子起卯逆數得酉（日柱）、天喜為其衝在卯，無
+//	日柱乙酉屬甲申旬：空亡在午未，午中年柱
+//	柱本身：辛巳祿酉入甲戌旬之空亡，十惡大敗（月、時兩柱）；四廢夏取壬子癸亥，無；
+//	        魁罡壬辰庚戌庚辰戊戌、天赦夏甲午、金神癸酉己巳乙丑皆無
 //	全盤：天干庚辛乙辛，無三奇；太歲類未給流年，不計
 func TestDetectSampleChart(t *testing.T) {
 	got := Detect(sampleInput(), sampleScan(), Default())
@@ -76,6 +80,9 @@ func TestDetectSampleChart(t *testing.T) {
 		{Kind: TianLuoDiWang, At: hourIdx, Basis: BasisSelf, Variant: VariantDiWang},
 		{Kind: ShiEDaBai, At: monthI, Basis: BasisSelf},
 		{Kind: ShiEDaBai, At: hourIdx, Basis: BasisSelf},
+		{Kind: TianChuGuiRen, At: yearIdx, Basis: BasisDayStem},
+		{Kind: HongLuan, At: dayIdx, Basis: BasisYearBranch},
+		{Kind: XunKong, At: yearIdx, Basis: BasisDayPillar},
 	}
 
 	if len(got) != len(want) {

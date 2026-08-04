@@ -211,6 +211,23 @@ func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 		return 1
 	}
 
+	// 以整柱查者（空亡）與以地支查者受同一個旋鈕影響——選的是年／日這條軸，
+	// 不是「干或支」。
+	if c == BasisDayPillar || c == BasisYearPillar {
+		switch opt.BranchBase {
+		case BranchBaseDay:
+			out[0] = BasisDayPillar
+		case BranchBaseYear:
+			out[0] = BasisYearPillar
+		case BranchBaseBoth:
+			out[0], out[1] = BasisDayPillar, BasisYearPillar
+			return 2
+		default:
+			out[0] = c
+		}
+		return 1
+	}
+
 	if c != BasisDayBranch && c != BasisYearBranch {
 		out[0] = c
 		return 1
@@ -241,6 +258,15 @@ func (in Input) baseBranch(b Basis) ganzhi.BranchIndex {
 	default:
 		return in.DayBranch
 	}
+}
+
+// basePillar 取指定基準的整組干支。空亡須知該柱屬哪一旬，拆開的干與支
+// 各自都不足以決定旬首。
+func (in Input) basePillar(b Basis) ganzhi.SexagenaryIndex {
+	if b == BasisYearPillar {
+		return sexFrom(in.YearStem, in.YearBranch)
+	}
+	return sexFrom(in.DayStem, in.DayBranch)
 }
 
 // baseStem 取指定基準的天干值
@@ -310,6 +336,32 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 			n++
 		}
 		return n
+
+	case TianChuGuiRen:
+		return one(tianChuBranch[int(in.baseStem(b))%ganzhi.StemCount])
+
+	case HongYan:
+		return one(hongYanBranch[int(in.baseStem(b))%ganzhi.StemCount])
+
+	case FuXingGuiRen:
+		n := 0
+		for _, br := range fuXingBranches[int(in.baseStem(b))%ganzhi.StemCount] {
+			out[n] = target{branch: br}
+			n++
+		}
+		return n
+
+	case HongLuan:
+		return one(hongLuan(in.baseBranch(b)))
+	case TianXi:
+		return one(clash(hongLuan(in.baseBranch(b))))
+
+	case XunKong:
+		// 〈六甲空亡〉：「甲子旬中無戌亥，甲戌旬中無申酉⋯」——該旬缺的兩支
+		a, c := xunKong(in.basePillar(b))
+		out[0] = target{branch: a}
+		out[1] = target{branch: c}
+		return 2
 
 	case AnLu:
 		return one(liuHe(luBranch[int(in.baseStem(b))%ganzhi.StemCount]))
@@ -473,6 +525,25 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input) (Variant, bool) {
 		lu := luBranch[int(sex.Stem())%ganzhi.StemCount]
 		a, b := xunKong(sex)
 		return VariantNone, lu == a || lu == b
+
+	case KuiGang:
+		for _, x := range kuiGangSex {
+			if sex == x {
+				return VariantNone, true
+			}
+		}
+		return VariantNone, false
+
+	case TianShe:
+		return VariantNone, sex == tianSheSex[directionGroup(in.MonthBranch)]
+
+	case JinShen:
+		for _, x := range jinShenSex {
+			if sex == x {
+				return VariantNone, true
+			}
+		}
+		return VariantNone, false
 
 	case SiFei:
 		// 該季無氣之五行，且干支同屬該五行——恰好是原文那八組

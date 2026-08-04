@@ -70,10 +70,28 @@ const (
 	ZhengYin      // 正印：五行之正庫
 	TianLuoDiWang // 天羅地網：火命看戌亥、水土命看辰巳
 
+	// ── 日干系（食神衍生）──
+
+	TianChuGuiRen // 天廚貴人：食神之祿位
+	FuXingGuiRen  // 福星貴人：食神所在的遁時支
+	HongYan       // 紅艷煞
+
+	// ── 年支系（鸞喜）──
+
+	HongLuan // 紅鸞：子年起卯逆數
+	TianXi   // 天喜：紅鸞之對衝
+
 	// ── 柱本身 ──
 
 	ShiEDaBai // 十惡大敗：日柱祿神落入該旬空亡
 	SiFei     // 四廢：月令當旺之五行所剋而無氣的日柱
+	KuiGang   // 魁罡：壬辰、庚戌、庚辰、戊戌
+	TianShe   // 天赦：春戊寅、夏甲午、秋戊申、冬甲子
+	JinShen   // 金神：癸酉、己巳、乙丑
+
+	// ── 日柱系 ──
+
+	XunKong // 空亡（旬空）：日柱所屬旬中缺的兩支
 
 	// ── 全盤 ──
 
@@ -151,6 +169,18 @@ var meta = [KindCount]struct {
 
 	ShiEDaBai: {CategorySecondary, TraditionZiping, BasisSelf},
 	SiFei:     {CategoryRare, TraditionZiping, BasisSelf},
+	KuiGang:   {CategoryCommon, TraditionZiping, BasisSelf},
+	TianShe:   {CategorySecondary, TraditionZiping, BasisSelf},
+	JinShen:   {CategoryRare, TraditionZiping, BasisSelf},
+
+	TianChuGuiRen: {CategorySecondary, TraditionZiping, BasisDayStem},
+	FuXingGuiRen:  {CategorySecondary, TraditionZiping, BasisDayStem},
+	HongYan:       {CategorySecondary, TraditionZiping, BasisDayStem},
+
+	HongLuan: {CategorySecondary, TraditionZiping, BasisYearBranch},
+	TianXi:   {CategorySecondary, TraditionZiping, BasisYearBranch},
+
+	XunKong: {CategoryCommon, TraditionZiping, BasisDayPillar},
 
 	SanQi: {CategorySecondary, TraditionZiping, BasisChart},
 
@@ -196,7 +226,7 @@ func (k Kind) Tradition() Tradition {
 // 六爻取世爻。
 func (k Kind) SubjectOnly() bool {
 	switch k {
-	case ShiEDaBai, SiFei:
+	case ShiEDaBai, SiFei, TianShe:
 		return true
 	}
 	return false

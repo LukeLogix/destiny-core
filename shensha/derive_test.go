@@ -485,3 +485,183 @@ func sameSet(a, b []ganzhi.BranchIndex) bool {
 	}
 	return true
 }
+
+// ── 第三批：食神衍生、鸞喜、柱本身 ──
+
+// TestSexFromRoundTrip 干支反查六十甲子——這是四廢初版手抄出錯之處。
+func TestSexFromRoundTrip(t *testing.T) {
+	for x := 0; x < ganzhi.SexagenaryCount; x++ {
+		sex := ganzhi.SexagenaryIndex(x)
+		if got := sexFrom(sex.Stem(), sex.Branch()); got != sex {
+			t.Errorf("%s%s 反查得 %d，應為 %d",
+				stemName[sex.Stem()], branchName[sex.Branch()], got, sex)
+		}
+	}
+}
+
+// TestEatGod 食神為我生者而同陰陽。
+func TestEatGod(t *testing.T) {
+	want := [ganzhi.StemCount]ganzhi.StemIndex{2, 3, 4, 5, 6, 7, 8, 9, 0, 1}
+	for s, w := range want {
+		if got := eatGod(ganzhi.StemIndex(s)); got != w {
+			t.Errorf("%s 之食神推導得 %s，應為 %s", stemName[s], stemName[got], stemName[w])
+		}
+	}
+}
+
+// TestTianChuAgainstClassics 天廚貴人對照《五行精紀》〈天廚格〉。
+//
+// 原文自述取法「此以食神見祿推之」，並列結果：「甲丙愛行雙女遊（巳），
+// 乙丁獅子（午）己金牛（酉），戊樂陰陽（申）庚亥地，癸來天蠍（卯）
+// 壬人馬（寅），辛到寶瓶（子）福自由」——推導與所列十干逐一比對。
+func TestTianChuAgainstClassics(t *testing.T) {
+	want := [ganzhi.StemCount]ganzhi.BranchIndex{
+		si, wu, si, wu, shen, you, hai, zi, yin, mao,
+	}
+	for s, w := range want {
+		if got := tianChuBranch[s]; got != w {
+			t.Errorf("%s 天廚推導得 %s，典籍為 %s", stemName[s], branchName[got], branchName[w])
+		}
+	}
+}
+
+// TestFuXingAgainstClassics 福星貴人對照《協紀辨方書》。
+//
+// 原文自述取法「日干生時干⋯皆本日日干之食神子孫」，並逐日列出：
+// 「甲日寅時必為丙寅，乙日丑時亥時必為丁丑丁亥，丙日子時戌時必為戊子戊戌，
+// 丁日酉時必為己酉，戊日申時必為庚申，己日未時必為辛未，庚日午時必為壬午，
+// 辛日巳時必為癸巳，壬日辰時必為甲辰，癸日卯時必為乙卯」。
+//
+// 《神峰通考》歌訣的丁作亥、癸作丑與此不合，見決策日誌 D-44。
+func TestFuXingAgainstClassics(t *testing.T) {
+	want := [ganzhi.StemCount][]ganzhi.BranchIndex{
+		{yin}, {chou, hai}, {zi, xu}, {you}, {shen},
+		{wei}, {wu}, {si}, {chen}, {mao},
+	}
+	for s, w := range want {
+		got := fuXingBranches[s]
+		if len(got) != len(w) || !sameSet(got, w) {
+			t.Errorf("%s 福星推導得 %s，協紀辨方書為 %s", stemName[s], names(got), names(w))
+		}
+	}
+	// 遁時的結果必然是該干的食神——推導的內在一致性
+	for s := 0; s < ganzhi.StemCount; s++ {
+		stem := ganzhi.StemIndex(s)
+		for _, b := range fuXingBranches[s] {
+			if hourStemAt(stem, b) != eatGod(stem) {
+				t.Errorf("%s 日 %s 時的遁干為 %s，非食神 %s",
+					stemName[s], branchName[b], stemName[hourStemAt(stem, b)], stemName[eatGod(stem)])
+			}
+		}
+	}
+}
+
+// TestHourStemStartAgainstClassics 五鼠遁對照《五行精紀》〈起時例〉。
+//
+// 「甲己還生甲，乙庚丙作初，丙辛當戊子，丁壬庚子居，戊癸壬子頭」。
+func TestHourStemStartAgainstClassics(t *testing.T) {
+	want := [ganzhi.StemCount]ganzhi.StemIndex{0, 2, 4, 6, 8, 0, 2, 4, 6, 8}
+	for s, w := range want {
+		if got := hourStemStart(ganzhi.StemIndex(s)); got != w {
+			t.Errorf("%s 日起子時為 %s，口訣為 %s", stemName[s], stemName[got], stemName[w])
+		}
+	}
+}
+
+// TestHongLuanAgainstClassics 紅鸞天喜對照《神峰通考》〈鸞喜二德解神歌〉。
+//
+// 「卯起紅鸞逆數通，欲知天喜是相衝」——子年紅鸞在卯，逐年逆退一位。
+func TestHongLuanAgainstClassics(t *testing.T) {
+	want := [ganzhi.BranchCount]ganzhi.BranchIndex{
+		zi: mao, chou: yin, yin: chou, mao: zi, chen: hai, si: xu,
+		wu: you, wei: shen, shen: wei, you: wu, xu: si, hai: chen,
+	}
+	for y, w := range want {
+		if got := hongLuan(ganzhi.BranchIndex(y)); got != w {
+			t.Errorf("%s年紅鸞推導得 %s，口訣為 %s", branchName[y], branchName[got], branchName[w])
+		}
+		if got := clash(hongLuan(ganzhi.BranchIndex(y))); got != clash(w) {
+			t.Errorf("%s年天喜推導得 %s，應為紅鸞之衝 %s", branchName[y], branchName[got], branchName[clash(w)])
+		}
+	}
+}
+
+// TestSelfPillarSetsAgainstClassics 魁罡、天赦、金神的干支組合。
+//
+// 魁罡《三命通會》「壬辰庚戌與庚辰戊戌，魁罡四座神」；
+// 天赦六書一致「春戊寅、夏甲午、秋戊申、冬甲子」；
+// 金神《三命通會》〈金神〉「止有三時，乃癸酉、己巳、乙丑」。
+//
+// 此處以干支對寫出，由 sexFrom 換算——不寫死六十甲子序位，那是四廢
+// 初版八組錯四組的來源。
+func TestSelfPillarSetsAgainstClassics(t *testing.T) {
+	pair := func(st ganzhi.StemIndex, br ganzhi.BranchIndex) ganzhi.SexagenaryIndex {
+		return sexFrom(st, br)
+	}
+	check := func(label string, got []ganzhi.SexagenaryIndex, want []ganzhi.SexagenaryIndex) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Errorf("%s 推導得 %s，典籍為 %s", label, sexNames(got), sexNames(want))
+			return
+		}
+		seen := map[ganzhi.SexagenaryIndex]bool{}
+		for _, x := range got {
+			seen[x] = true
+		}
+		for _, w := range want {
+			if !seen[w] {
+				t.Errorf("%s 缺 %s%s（推導得 %s）", label,
+					stemName[w.Stem()], branchName[w.Branch()], sexNames(got))
+			}
+		}
+	}
+
+	check("魁罡", kuiGangSex, []ganzhi.SexagenaryIndex{
+		pair(8, chen), pair(6, xu), pair(6, chen), pair(4, xu), // 壬辰 庚戌 庚辰 戊戌
+	})
+	check("金神", jinShenSex, []ganzhi.SexagenaryIndex{
+		pair(9, you), pair(5, si), pair(1, chou), // 癸酉 己巳 乙丑
+	})
+
+	// 天赦按季，索引同 directionGroup
+	tianShe := map[ganzhi.BranchIndex]ganzhi.SexagenaryIndex{
+		yin:  pair(4, yin),  // 春（寅卯辰）：戊寅
+		si:   pair(0, wu),   // 夏（巳午未）：甲午
+		shen: pair(4, shen), // 秋（申酉戌）：戊申
+		hai:  pair(0, zi),   // 冬（亥子丑）：甲子
+	}
+	for month, w := range tianShe {
+		if got := tianSheSex[directionGroup(month)]; got != w {
+			t.Errorf("%s月天赦推導得 %s%s，典籍為 %s%s", branchName[month],
+				stemName[got.Stem()], branchName[got.Branch()],
+				stemName[w.Stem()], branchName[w.Branch()])
+		}
+	}
+}
+
+// TestXunKongAgainstClassics 空亡對照《神峰通考》〈六甲空亡〉。
+//
+// 「甲子旬中無戌亥，甲戌旬中無申酉，甲申旬中無午未，甲午旬中無辰巳，
+// 甲辰旬中無寅卯，甲寅旬中無子丑」。
+func TestXunKongAgainstClassics(t *testing.T) {
+	want := []struct {
+		head ganzhi.BranchIndex // 旬首之支（旬首必為甲）
+		a, b ganzhi.BranchIndex
+	}{
+		{zi, xu, hai}, {xu, shen, you}, {shen, wu, wei},
+		{wu, chen, si}, {chen, yin, mao}, {yin, zi, chou},
+	}
+	for _, c := range want {
+		head := sexFrom(0, c.head) // 甲＋該支
+		// 旬內十位皆須得同一組空亡
+		for n := 0; n < 10; n++ {
+			sex := ganzhi.SexagenaryIndex((int(head) + n) % ganzhi.SexagenaryCount)
+			a, b := xunKong(sex)
+			if a != c.a || b != c.b {
+				t.Errorf("甲%s旬的 %s%s 推導得空亡 %s%s，典籍為 %s%s",
+					branchName[c.head], stemName[sex.Stem()], branchName[sex.Branch()],
+					branchName[a], branchName[b], branchName[c.a], branchName[c.b])
+			}
+		}
+	}
+}
