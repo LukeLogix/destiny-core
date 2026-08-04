@@ -74,6 +74,15 @@ var branchBaseSectIDs = [4]string{
 
 func (s BranchBaseSect) ID() string { return pickID(branchBaseSectIDs[:], int(s)) }
 
+var stemBaseSectIDs = [4]string{
+	StemBaseCustomary: "customary",
+	StemBaseDay:       "day",
+	StemBaseYear:      "year",
+	StemBaseBoth:      "both",
+}
+
+func (s StemBaseSect) ID() string { return pickID(stemBaseSectIDs[:], int(s)) }
+
 var tianYiSectIDs = [2]string{
 	TianYiSanMing:   "san_ming",
 	TianYiYeHuiTing: "ye_hui_ting",

@@ -18,6 +18,20 @@ const (
 	BranchBaseBoth                     // 年支、日支皆查，以 Hit.Basis 區分
 )
 
+// StemBaseSect 以天干查的那組，基準取自年干或日干。
+//
+// 與 BranchBase 同一性質的分歧，先前只實作了地支那半。市面實作多同時查
+// 日干與年干——同一張盤的天乙貴人可能因此多出一柱。
+type StemBaseSect uint8
+
+const (
+	// StemBaseCustomary 各神煞沿用其慣用基準，即日干（預設）
+	StemBaseCustomary StemBaseSect = iota
+	StemBaseDay                    // 一律以日干為基準
+	StemBaseYear                   // 一律以年干為基準
+	StemBaseBoth                   // 年干、日干皆查，以 Hit.Basis 區分
+)
+
 // TianYiSect 天乙貴人的口訣版本
 type TianYiSect uint8
 
@@ -52,6 +66,7 @@ type Options struct {
 	Exclude    []Kind // 自結果中排除
 
 	BranchBase   BranchBaseSect
+	StemBase     StemBaseSect
 	TianYi       TianYiSect
 	YinStemBlade YinStemBladeSect
 }
@@ -145,6 +160,22 @@ const (
 // 只有以地支查者受 BranchBase 影響；以日干查者不在此列。
 func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	c := k.CustomaryBasis()
+
+	if c == BasisDayStem || c == BasisYearStem {
+		switch opt.StemBase {
+		case StemBaseDay:
+			out[0] = BasisDayStem
+		case StemBaseYear:
+			out[0] = BasisYearStem
+		case StemBaseBoth:
+			out[0], out[1] = BasisDayStem, BasisYearStem
+			return 2
+		default:
+			out[0] = c
+		}
+		return 1
+	}
+
 	if c != BasisDayBranch && c != BasisYearBranch {
 		out[0] = c
 		return 1

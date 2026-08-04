@@ -68,6 +68,7 @@ var idEnums = []idEnum{
 	{"../shensha", "Category", 4, func(i int) string { return shensha.Category(i).ID() }},
 	{"../shensha", "Tradition", 3, func(i int) string { return shensha.Tradition(i).ID() }},
 	{"../shensha", "BranchBaseSect", 4, func(i int) string { return shensha.BranchBaseSect(i).ID() }},
+	{"../shensha", "StemBaseSect", 4, func(i int) string { return shensha.StemBaseSect(i).ID() }},
 	{"../shensha", "TianYiSect", 2, func(i int) string { return shensha.TianYiSect(i).ID() }},
 	{"../shensha", "YinStemBladeSect", 2, func(i int) string { return shensha.YinStemBladeSect(i).ID() }},
 }
