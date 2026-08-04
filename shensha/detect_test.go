@@ -25,6 +25,8 @@ func sampleInput() Input {
 		DayBranch:   9, // 酉
 		YearBranch:  6, // 午
 		MonthBranch: 5, // 巳
+		IsMale:      true,
+		YearSound:   ganzhi.SoundOf(gengWu), // 庚午路旁土
 	}
 }
 
@@ -34,20 +36,46 @@ func sampleScan() []ganzhi.SexagenaryIndex {
 
 // TestDetectSampleChart 基準命例的完整命中，逐筆手算核對。
 //
-//	日干乙：祿在卯（無）、羊刃在辰（無）、金輿在巳（月、時兩柱）、
-//	        文昌在午（年柱）、天乙在申子（無）
-//	日支酉屬巳酉丑金局：將星在酉（日柱）、咸池在午（年柱）、
-//	        華蓋丑、驛馬亥、劫煞寅、亡神申、災煞卯、六厄子皆無
-//	年支午屬巳午未方：孤辰在申（無）、寡宿在辰（無）
+//	日干乙：太極在子午（年柱午）、金輿在巳（月、時兩柱）、文昌在午（年柱）；
+//	        祿卯、暗祿戌、羊刃辰、飛刃戌、天乙申子皆無
+//	日支酉屬巳酉丑金局：將星在酉（日柱）、咸池在午（年柱）；
+//	        華蓋丑、驛馬亥、攀鞍子、劫煞寅、亡神申、災煞卯、六厄子皆無
+//	年支午屬巳午未方：孤辰申、寡宿辰皆無；隔角取前後一辰之落四孟四季者，
+//	        未為隔、巳為角，巳中月時兩柱
+//	月支巳：天德在辛（月、時）、月德在庚（年）、月德合在乙（日）；
+//	        天德合丙無。德秀巳酉丑月德庚辛、秀乙庚——庚辛乙庚共五筆
+//	年支午：元辰丑無、勾絞陽男取前三為酉（日柱）、暗金的煞在巳（月、時）
+//	年納音路旁土：土命地網在辰巳（月、時）；學堂申、詞館亥、正印辰皆無
+//	柱本身：辛巳祿酉入甲戌旬之空亡，十惡大敗（月、時兩柱）；四廢夏取壬子癸亥，無
+//	全盤：天干庚辛乙辛，無三奇；太歲類未給流年，不計
 func TestDetectSampleChart(t *testing.T) {
 	got := Detect(sampleInput(), sampleScan(), Default())
 
 	want := []Hit{
+		{Kind: TaiJiGuiRen, At: yearIdx, Basis: BasisDayStem},
 		{Kind: JinYu, At: monthI, Basis: BasisDayStem},
 		{Kind: JinYu, At: hourIdx, Basis: BasisDayStem},
 		{Kind: WenChangGuiRen, At: yearIdx, Basis: BasisDayStem},
 		{Kind: JiangXing, At: dayIdx, Basis: BasisDayBranch},
 		{Kind: XianChi, At: yearIdx, Basis: BasisDayBranch},
+		{Kind: GeJiao, At: monthI, Basis: BasisYearBranch},
+		{Kind: GeJiao, At: hourIdx, Basis: BasisYearBranch},
+		{Kind: TianDe, At: monthI, Basis: BasisMonthBranch},
+		{Kind: TianDe, At: hourIdx, Basis: BasisMonthBranch},
+		{Kind: YueDe, At: yearIdx, Basis: BasisMonthBranch},
+		{Kind: YueDeHe, At: dayIdx, Basis: BasisMonthBranch},
+		{Kind: DeXiu, At: yearIdx, Basis: BasisMonthBranch, Variant: VariantDe},
+		{Kind: DeXiu, At: yearIdx, Basis: BasisMonthBranch, Variant: VariantXiu},
+		{Kind: DeXiu, At: monthI, Basis: BasisMonthBranch, Variant: VariantDe},
+		{Kind: DeXiu, At: dayIdx, Basis: BasisMonthBranch, Variant: VariantXiu},
+		{Kind: DeXiu, At: hourIdx, Basis: BasisMonthBranch, Variant: VariantDe},
+		{Kind: GouJiao, At: dayIdx, Basis: BasisYearBranch, Variant: VariantGou},
+		{Kind: AnJinDeSha, At: monthI, Basis: BasisYearBranch},
+		{Kind: AnJinDeSha, At: hourIdx, Basis: BasisYearBranch},
+		{Kind: TianLuoDiWang, At: monthI, Basis: BasisSelf, Variant: VariantDiWang},
+		{Kind: TianLuoDiWang, At: hourIdx, Basis: BasisSelf, Variant: VariantDiWang},
+		{Kind: ShiEDaBai, At: monthI, Basis: BasisSelf},
+		{Kind: ShiEDaBai, At: hourIdx, Basis: BasisSelf},
 	}
 
 	if len(got) != len(want) {
@@ -193,10 +221,15 @@ func TestCategoryFilter(t *testing.T) {
 		t.Fatal("預設應有命中")
 	}
 
-	// 目前實作的十五個皆為 CategoryCommon，故過濾常用組結果應相同
+	// 常用組是全部的真子集，且各筆的分類須相符
 	common := Detect(in, scan, Options{Categories: []Category{CategoryCommon}})
-	if len(common) != len(full) {
-		t.Errorf("僅取常用組得 %d 筆，全部為 %d 筆", len(common), len(full))
+	if len(common) == 0 || len(common) >= len(full) {
+		t.Errorf("僅取常用組得 %d 筆，全部為 %d 筆——應為非空的真子集", len(common), len(full))
+	}
+	for _, h := range common {
+		if h.Kind.Category() != CategoryCommon {
+			t.Errorf("常用組中混入 %s（分類 %s）", h.Kind.ID(), h.Kind.Category().ID())
+		}
 	}
 
 	// 空的分類清單加空的 Include 應無命中
@@ -237,15 +270,30 @@ func TestKindMetadata(t *testing.T) {
 	}
 }
 
-// TestWenChangIsZiwei 文昌貴人須標明為紫微系——子平典籍另有同名而內容不同的
-// 「文昌貴」，兩者僅甲、戊兩干相同，不可混用。
-func TestWenChangIsZiwei(t *testing.T) {
+// TestTraditionsAreConsistent 體系標記須與該神煞的來源一致。
+//
+// 文昌貴人須標明為紫微系——子平典籍另有同名而內容不同的「文昌貴」，兩者僅
+// 甲、戊兩干相同，不可混用。十二歲君整組出自星命系，且該組與 CategoryAnnual
+// 互為充要——若日後有非歲君的太歲類神煞，本測試會逼實作者當場表態。
+func TestTraditionsAreConsistent(t *testing.T) {
 	if WenChangGuiRen.Tradition() != TraditionZiwei {
 		t.Errorf("文昌貴人的體系為 %s，應為紫微斗數", WenChangGuiRen.Tradition().ID())
 	}
 	for k := Kind(0); k < KindCount; k++ {
-		if k != WenChangGuiRen && k.Tradition() != TraditionZiping {
-			t.Errorf("%s 的體系為 %s，目前除文昌貴人外皆應為子平", k.ID(), k.Tradition().ID())
+		want := TraditionZiping
+		switch {
+		case k == WenChangGuiRen:
+			want = TraditionZiwei
+		case k.Category() == CategoryAnnual:
+			want = TraditionSuiJun
+		}
+		got := k.Tradition()
+		if got != want {
+			t.Errorf("%s 的體系為 %s，應為 %s", k.ID(), got.ID(), want.ID())
+		}
+		if (got == TraditionSuiJun) != (k.Category() == CategoryAnnual) {
+			t.Errorf("%s：十二歲君與太歲類須互為充要，現為 %s／%s",
+				k.ID(), got.ID(), k.Category().ID())
 		}
 	}
 }

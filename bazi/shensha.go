@@ -36,7 +36,7 @@ func (c *Chart) detectShenSha(opt Options) {
 	for i, p := range c.Pillars() {
 		natal[i] = p.Sexagenary
 	}
-	c.ShenSha = shensha.Detect(in, natal, opt.ShenSha)
+	c.ShenSha = subjectAtDay(shensha.Detect(in, natal, opt.ShenSha))
 
 	if !opt.IncludeDynamicShenSha {
 		return
@@ -47,9 +47,26 @@ func (c *Chart) detectShenSha(opt Options) {
 	// 單元素掃描的另一好處是 At 恆為 0，正合 D-34：位置已由所在結構隱含。
 	one := make([]ganzhi.SexagenaryIndex, 1)
 
+	// 十二歲君的方向相反：基準是流年，掃的是原局四柱。若照其餘神煞的作法
+	// 只掃流年那一柱，太歲永遠命中自己、其餘十一位永遠落空——看似有算，
+	// 實則什麼也沒說。故另行偵測、另欄存放。
+	// 兩趟都用 Exclude 縮限而不改寫 Categories／Include——那三者是使用者的
+	// 口徑設定，覆寫掉會讓「我明明排除了」失效。
+	suiJun := opt.ShenSha
+	suiJun.Exclude = withExcluded(opt.ShenSha.Exclude, func(k shensha.Kind) bool {
+		return k.Category() != shensha.CategoryAnnual
+	})
+
+	// 動態柱那趟不含太歲類——歲君已由上一趟以原局為掃描對象算過。留著只會
+	// 讓「太歲」每年命中流年支自己，是套套邏輯而非資訊。
+	dynamic := opt.ShenSha
+	dynamic.Exclude = withExcluded(opt.ShenSha.Exclude, func(k shensha.Kind) bool {
+		return k.SubjectOnly() || k.Category() == shensha.CategoryAnnual
+	})
+
 	for i := range c.Fortunes {
 		one[0] = c.Fortunes[i].Sexagenary
-		c.Fortunes[i].ShenSha = shensha.Detect(in, one, opt.ShenSha)
+		c.Fortunes[i].ShenSha = shensha.Detect(in, one, dynamic)
 
 		for j := range c.Fortunes[i].Years {
 			// 太歲類神煞以該年干支為基準，故逐年重設
@@ -58,7 +75,37 @@ func (c *Chart) detectShenSha(opt Options) {
 			yin.HasAnnual = true
 
 			one[0] = c.Fortunes[i].Years[j].Sexagenary
-			c.Fortunes[i].Years[j].ShenSha = shensha.Detect(yin, one, opt.ShenSha)
+			c.Fortunes[i].Years[j].ShenSha = shensha.Detect(yin, one, dynamic)
+			c.Fortunes[i].Years[j].SuiJunShenSha = shensha.Detect(yin, natal, suiJun)
 		}
 	}
+}
+
+// subjectAtDay 濾掉落在非日柱的「僅論主體」神煞。
+//
+// shensha 位置無關，只報構成；八字的主體是日柱，故十惡大敗、四廢出現在
+// 年月時柱不算數——那只是碰巧同一組干支。
+func subjectAtDay(hits []shensha.Hit) []shensha.Hit {
+	out := hits[:0]
+	for _, h := range hits {
+		if h.Kind.SubjectOnly() && h.At != dayPillarIndex {
+			continue
+		}
+		out = append(out, h)
+	}
+	return out
+}
+
+// dayPillarIndex 日柱在 Chart.Pillars 中的序位
+const dayPillarIndex = 2
+
+// withExcluded 在既有排除清單上再排除符合條件者，不動原切片。
+func withExcluded(base []shensha.Kind, drop func(shensha.Kind) bool) []shensha.Kind {
+	out := append([]shensha.Kind(nil), base...)
+	for k := shensha.Kind(0); k < shensha.KindCount; k++ {
+		if drop(k) {
+			out = append(out, k)
+		}
+	}
+	return out
 }

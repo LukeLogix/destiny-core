@@ -55,7 +55,7 @@ type bundle struct {
 	// 神煞
 	shenSha    [shensha.KindCount]string
 	basis      [8]string
-	variants   [5]string
+	variants   [13]string
 	categories [4]string
 	traditions [3]string
 

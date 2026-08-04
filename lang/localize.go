@@ -41,8 +41,13 @@ type LocalizedAnnualYear struct {
 	Sexagenary string `json:"sexagenary"`
 	TenGod     Term   `json:"ten_god"`
 
-	// ShenSha 僅 bazi.Options.IncludeDynamicShenSha 為 true 時有值
+	// ShenSha 僅 bazi.Options.IncludeDynamicShenSha 為 true 時有值。
+	// 以原局為基準、落在本流年柱者，故 At 恆為 0。
 	ShenSha []LocalizedShenSha `json:"shen_sha,omitempty"`
+
+	// SuiJunShenSha 十二歲君，方向相反——以本年太歲為基準，落在原局四柱，
+	// At 為柱序。與 ShenSha 分欄，因兩者的 At 語意不同。
+	SuiJunShenSha []LocalizedShenSha `json:"sui_jun_shen_sha,omitempty"`
 }
 
 // LocalizedFortune 大運的文字形式
@@ -290,10 +295,11 @@ func localizeFortune(b *bundle, f bazi.DecadeFortune) LocalizedFortune {
 	}
 	for _, y := range f.Years {
 		lf.Years = append(lf.Years, LocalizedAnnualYear{
-			Year:       y.Year,
-			Sexagenary: b.Sexagenary(y.Sexagenary),
-			TenGod:     b.TenGod(y.StemTenGod),
-			ShenSha:    localizeShenSha(b, y.ShenSha),
+			Year:          y.Year,
+			Sexagenary:    b.Sexagenary(y.Sexagenary),
+			TenGod:        b.TenGod(y.StemTenGod),
+			ShenSha:       localizeShenSha(b, y.ShenSha),
+			SuiJunShenSha: localizeShenSha(b, y.SuiJunShenSha),
 		})
 	}
 	return lf

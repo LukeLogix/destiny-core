@@ -38,8 +38,19 @@ func TestChartCarriesShenSha(t *testing.T) {
 			}
 		}
 	}
-	if len(c.ShenSha) != 5 {
-		t.Errorf("原局共 %d 筆命中，應為 5 筆", len(c.ShenSha))
+	// 僅論主體者只能落在日柱——十惡大敗、四廢的原文是「日」，
+	// 年月時柱碰巧湊出同一組干支不算數
+	for _, h := range c.ShenSha {
+		if h.Kind.SubjectOnly() && h.At != dayPillarIndex {
+			t.Errorf("%s 落在第 %d 柱，僅論主體者只能在日柱", h.Kind.ID(), h.At)
+		}
+	}
+
+	// 太歲類的基準是流年，原局層不該出現
+	for _, h := range c.ShenSha {
+		if h.Kind.Category() == shensha.CategoryAnnual {
+			t.Errorf("原局出現太歲類的 %s，該類只在流年層成立", h.Kind.ID())
+		}
 	}
 }
 
@@ -124,20 +135,64 @@ func TestDynamicShenShaNotAliased(t *testing.T) {
 	t.Logf("一百個流年產生 %d 種不同的命中組合", len(seen))
 }
 
-// TestDynamicShenShaCountStable 動態命中總數不因組裝方式改變而變動。
-func TestDynamicShenShaCountStable(t *testing.T) {
+// TestDynamicShenShaContract 動態層兩個欄位的分工。
+//
+// 原先此處釘的是總數 146。那個數字每加一個神煞就要改一次，改完也看不出
+// 對錯——改成釘住兩欄位各自的契約，加神煞不必動它，組裝寫錯則會當場失敗。
+func TestDynamicShenShaContract(t *testing.T) {
 	opt := Default()
 	opt.IncludeDynamicShenSha = true
 	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), opt)
 
-	total := 0
-	for _, f := range c.Fortunes {
-		total += len(f.ShenSha)
-		for _, y := range f.Years {
-			total += len(y.ShenSha)
+	var dyn, suiJun int
+	for i, f := range c.Fortunes {
+		for _, h := range f.ShenSha {
+			checkDynamicHit(t, h, i, -1)
+			dyn++
+		}
+		for j, y := range f.Years {
+			for _, h := range y.ShenSha {
+				checkDynamicHit(t, h, i, j)
+				dyn++
+			}
+			for _, h := range y.SuiJunShenSha {
+				if h.Kind.Category() != shensha.CategoryAnnual {
+					t.Errorf("第 %d 步第 %d 年的歲君欄混入非太歲類的 %s", i, j, h.Kind.ID())
+				}
+				if h.At < 0 || h.At >= 4 {
+					t.Errorf("第 %d 步第 %d 年的歲君 %s 落在 At=%d，應為原局四柱之一",
+						i, j, h.Kind.ID(), h.At)
+				}
+				suiJun++
+			}
 		}
 	}
-	if total != 146 {
-		t.Errorf("動態柱共 %d 筆命中，改組裝方式前為 146 筆", total)
+	if dyn == 0 {
+		t.Error("開啟動態後大運流年一筆神煞都沒有")
+	}
+	// 太歲必在流年支自己身上，故每年至少一筆——除非原局四柱都不含該支
+	if suiJun == 0 {
+		t.Error("十二歲君一筆也沒有——歲君掃的是原局四柱，掃錯對象會全空")
+	}
+	t.Logf("動態柱 %d 筆、歲君落原局 %d 筆", dyn, suiJun)
+}
+
+// checkDynamicHit 動態柱的命中：At 恆為 0，且不含僅論主體者與太歲類。
+func checkDynamicHit(t *testing.T, h shensha.Hit, step, year int) {
+	t.Helper()
+	where := "大運"
+	if year >= 0 {
+		where = "流年"
+	}
+	if h.At != 0 {
+		t.Errorf("第 %d 步%s的 %s 命中 At=%d，單柱掃描應恆為 0", step, where, h.Kind.ID(), h.At)
+	}
+	if h.Kind.SubjectOnly() {
+		t.Errorf("第 %d 步%s出現僅論主體的 %s——大運流年柱都不是命主本柱",
+			step, where, h.Kind.ID())
+	}
+	if h.Kind.Category() == shensha.CategoryAnnual {
+		t.Errorf("第 %d 步%s的神煞欄混入太歲類的 %s，該類應在 SuiJunShenSha",
+			step, where, h.Kind.ID())
 	}
 }

@@ -47,6 +47,14 @@ const (
 	VariantYinNoble                 // 天乙：陰貴（夜貴）
 	VariantYangStem                 // 羊刃：陽干刃
 	VariantYinStem                  // 羊刃：陰干刃
+	VariantGou                      // 勾絞：勾
+	VariantJiao                     // 勾絞：絞
+	VariantDe                       // 德秀：德
+	VariantXiu                      // 德秀：秀
+	VariantTianLuo                  // 天羅地網：天羅
+	VariantDiWang                   // 天羅地網：地網
+	VariantTianShang                // 三奇：天上三奇乙丙丁
+	VariantDiXia                    // 三奇：地下三奇甲戊庚
 
 	variantCount
 )

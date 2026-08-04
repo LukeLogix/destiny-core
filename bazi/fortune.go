@@ -33,8 +33,16 @@ type AnnualYear struct {
 	Sexagenary ganzhi.SexagenaryIndex
 	StemTenGod TenGod
 
-	// ShenSha 僅 Options.IncludeDynamicShenSha 為 true 時填入
+	// ShenSha 僅 Options.IncludeDynamicShenSha 為 true 時填入。
+	// 以原局為基準、落在本流年柱者，故 At 恆為 0。
 	ShenSha []shensha.Hit
+
+	// SuiJunShenSha 十二歲君，方向與 ShenSha 相反——以本年太歲為基準，
+	// 落在原局四柱，At 為柱序。
+	//
+	// 分成兩個欄位而非併入 ShenSha：兩者的 At 語意不同，混在一起無從分辨
+	// 「今年的喪門落在你年柱」與「你年柱的華蓋落在今年」。
+	SuiJunShenSha []shensha.Hit
 }
 
 // fortuneSteps 大運步數，涵蓋約百年。

@@ -202,3 +202,286 @@ func TestTianYiAgainstClassics(t *testing.T) {
 		}
 	}
 }
+
+// ── 以下為第二批神煞的雙軌互驗 ──
+
+// TestTaiJiAgainstClassics 太極貴人對照〈論太極貴〉自述的結論。
+//
+// derive.go 已引原文的散文段（「甲乙木先造乎子⋯後終乎午」云云），此處把
+// 那段話轉成的表逐項寫死。散文轉表這一步本身會出錯，故仍值得釘住；
+// 但這不是獨立的第二來源，與其他測試的「典籍 vs 推導」性質不同。
+func TestTaiJiAgainstClassics(t *testing.T) {
+	want := [ganzhi.StemCount][]ganzhi.BranchIndex{
+		{zi, wu}, {zi, wu}, // 甲乙：子午
+		{mao, you}, {mao, you}, // 丙丁：卯酉（雞兔）
+		{chen, xu, chou, wei}, {chen, xu, chou, wei}, // 戊己：辰戌丑未
+		{yin, hai}, {yin, hai}, // 庚辛：寅亥
+		{shen, si}, {shen, si}, // 壬癸：巳申
+	}
+	for s, w := range want {
+		got := taiJiTargets[s]
+		if len(got) != len(w) {
+			t.Errorf("%s 太極貴推導得 %s，典籍為 %s", stemName[s], names(got), names(w))
+			continue
+		}
+		if !sameSet(got, w) {
+			t.Errorf("%s 太極貴推導得 %s，典籍為 %s", stemName[s], names(got), names(w))
+		}
+	}
+}
+
+// TestAnLuIsLuHarmony 暗祿即祿位之六合。
+//
+// 手上只有〈暗祿格〉的「甲人辛亥暗中祿」一句可直接對照：甲祿在寅，寅亥六合，
+// 故甲之暗祿在亥。餘九干在語料中查無逐條列舉，此處只釘住機制的一致性——
+// 十干皆為 liuHe(祿)，且甲那一項與原文相符。
+//
+// 不補其餘九干的「典籍值」：憑印象寫下的口訣曾在此把癸誤作卯，
+// 那實為天乙貴人的「壬癸兔蛇藏」。查不到就不寫，勝過寫個看起來有據的錯誤。
+func TestAnLuIsLuHarmony(t *testing.T) {
+	if got := liuHe(luBranch[0]); got != hai {
+		t.Errorf("甲之暗祿推導得 %s，〈暗祿格〉作亥", branchName[got])
+	}
+	for s := 0; s < ganzhi.StemCount; s++ {
+		lu := luBranch[s]
+		an := liuHe(lu)
+		// 六合為對合關係，合回去須得原位
+		if liuHe(an) != lu {
+			t.Errorf("%s：祿 %s 之合為 %s，再合卻得 %s，六合不對稱",
+				stemName[s], branchName[lu], branchName[an], branchName[liuHe(an)])
+		}
+		if int(lu)+int(an) != 13 && int(lu)+int(an) != 1 {
+			t.Errorf("%s：%s 與 %s 之和為 %d，六合須為子丑、寅亥⋯之配",
+				stemName[s], branchName[lu], branchName[an], int(lu)+int(an))
+		}
+	}
+}
+
+// TestFeiRenIsBladeClash 飛刃即羊刃之對衝。此為取法本身，非另一張表。
+func TestFeiRenIsBladeClash(t *testing.T) {
+	want := [ganzhi.StemCount]ganzhi.BranchIndex{you, xu, zi, chou, zi, chou, mao, chen, wu, wei}
+	for s, w := range want {
+		if got := clash(offsetFromLu(ganzhi.StemIndex(s), 1)); got != w {
+			t.Errorf("%s 飛刃推導得 %s，應為 %s", stemName[s], branchName[got], branchName[w])
+		}
+	}
+}
+
+// TestTianYueDeAgainstClassics 天德、月德及其合對照口訣。
+//
+// 天德：「正丁二坤宮，三壬四辛同，五乾六甲上，七癸八艮逢，
+// 九丙十居乙，子巽丑庚中」。乾亥、坤申、艮寅、巽巳。
+// 月德：「寅午戌月在丙，申子辰月在壬，亥卯未月在甲，巳酉丑月在庚」。
+func TestTianYueDeAgainstClassics(t *testing.T) {
+	// 月序自寅起正月，故索引為月支
+	tianDe := map[ganzhi.BranchIndex]int{
+		yin: 3, mao: 100 + shen, chen: 8, si: 7, // 正丁 二坤 三壬 四辛
+		wu: 100 + hai, wei: 0, shen: 9, you: 100 + yin, // 五乾 六甲 七癸 八艮
+		xu: 2, hai: 1, zi: 100 + si, chou: 6, // 九丙 十乙 十一巽 十二庚
+	}
+	for m, w := range tianDe {
+		if got := tianDeByMonth[m]; got != w {
+			t.Errorf("%s月天德推導得 %d，典籍為 %d", branchName[m], got, w)
+		}
+		// 天德合僅在天德落於天干時成立
+		if w < 100 {
+			if got := hePartner(ganzhi.StemIndex(w)); int(got) != (w+5)%ganzhi.StemCount {
+				t.Errorf("%s月天德合推導得 %s", branchName[m], stemName[got])
+			}
+		}
+	}
+
+	yueDe := map[ganzhi.BranchIndex]ganzhi.StemIndex{
+		yin: 2, wu: 2, xu: 2, // 寅午戌→丙
+		shen: 8, zi: 8, chen: 8, // 申子辰→壬
+		hai: 0, mao: 0, wei: 0, // 亥卯未→甲
+		si: 6, you: 6, chou: 6, // 巳酉丑→庚
+	}
+	for m, w := range yueDe {
+		if got := yueDeStem(m); got != w {
+			t.Errorf("%s月月德推導得 %s，典籍為 %s", branchName[m], stemName[got], stemName[w])
+		}
+	}
+
+	// 月德合為月德之五合：丙辛、壬丁、甲己、庚乙
+	heWant := map[ganzhi.StemIndex]ganzhi.StemIndex{2: 7, 8: 3, 0: 5, 6: 1}
+	for de, w := range heWant {
+		if got := hePartner(de); got != w {
+			t.Errorf("%s 之合推導得 %s，應為 %s", stemName[de], stemName[got], stemName[w])
+		}
+	}
+}
+
+// TestAnJinAgainstClassics 暗金的煞對照〈論暗金的煞〉。
+//
+// 「子午卯酉在巳，寅申巳亥在酉，辰戌丑未在丑」——三組分群不可混。
+// 曾誤以 mod 4 分群（那是三合局的模數），午年因此得酉而非巳。
+func TestAnJinAgainstClassics(t *testing.T) {
+	groups := []struct {
+		bs   []ganzhi.BranchIndex
+		want ganzhi.BranchIndex
+	}{
+		{[]ganzhi.BranchIndex{zi, wu, mao, you}, si},
+		{[]ganzhi.BranchIndex{yin, shen, si, hai}, you},
+		{[]ganzhi.BranchIndex{chen, xu, chou, wei}, chou},
+	}
+	for _, g := range groups {
+		for _, b := range g.bs {
+			if got := anJinTarget(b); got != g.want {
+				t.Errorf("%s年暗金的煞推導得 %s，典籍為 %s",
+					branchName[b], branchName[got], branchName[g.want])
+			}
+		}
+	}
+}
+
+// TestSoundAxisAgainstClassics 學堂、詞館、正印三者對照典籍。
+//
+// 學堂為納音長生、詞館為臨官、正印為墓庫，且該柱納音須與年命同五行，
+// 故各五行恰有一組甲子。〈論學堂詞館〉舉「金命見辛巳」，
+// 〈論正印〉列「金命見乙丑、木癸未、火甲戌、水土壬辰丙辰」。
+//
+// 納音系為水土同宮，與 ganzhi.TerrainOf 的火土同宮不同——若誤用後者，
+// 土命的學堂會落在寅而非申，本測試即釘住此點。
+func TestSoundAxisAgainstClassics(t *testing.T) {
+	// 學堂：金巳、木亥、水土申、火寅
+	xueTang := [ganzhi.ElementCount]ganzhi.BranchIndex{
+		ganzhi.Metal: si, ganzhi.Wood: hai, ganzhi.Water: shen,
+		ganzhi.Earth: shen, ganzhi.Fire: yin,
+	}
+	for e, w := range xueTang {
+		if got := soundTerrainAt(ganzhi.Element(e), terrainLongLife); got != w {
+			t.Errorf("%s命學堂推導得 %s，典籍為 %s",
+				ganzhi.Element(e).ID(), branchName[got], branchName[w])
+		}
+	}
+
+	// 正印的甲子：反查納音同五行且落在墓位者，須恰為典籍那五組
+	zhengYin := map[ganzhi.Element]ganzhi.SexagenaryIndex{
+		ganzhi.Metal: 1, ganzhi.Wood: 19, ganzhi.Fire: 10, // 乙丑、癸未、甲戌
+		ganzhi.Water: 28, ganzhi.Earth: 52, // 壬辰、丙辰
+	}
+	for e, want := range zhengYin {
+		var got []ganzhi.SexagenaryIndex
+		for x := 0; x < 60; x++ {
+			sex := ganzhi.SexagenaryIndex(x)
+			if ganzhi.SoundOf(sex).Element() == e && sex.Branch() == soundTerrainAt(e, terrainTomb) {
+				got = append(got, sex)
+			}
+		}
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("%s命正印推導得 %v，典籍為單一的 %s%s",
+				e.ID(), got, stemName[want.Stem()], branchName[want.Branch()])
+		}
+	}
+
+	// 詞館同理，且金命須為壬申——原文舉學堂「辛巳」，詞館在臨官申
+	for x := 0; x < 60; x++ {
+		sex := ganzhi.SexagenaryIndex(x)
+		if ganzhi.SoundOf(sex).Element() == ganzhi.Metal &&
+			sex.Branch() == soundTerrainAt(ganzhi.Metal, terrainOfficer) && sex != 8 {
+			t.Errorf("金命詞館推導另得 %s%s，應僅壬申一組",
+				stemName[sex.Stem()], branchName[sex.Branch()])
+		}
+	}
+}
+
+// TestSiFeiAgainstClassics 四廢對照《五行精紀》〈四廢日〉。
+//
+// 「春庚申辛酉，夏壬子癸亥，秋甲寅乙卯，冬丙午丁巳」。推導不抄這八組，
+// 只記各季無氣之五行，靠「干支同五行」把干支長出來——本測試驗證兩者等價。
+func TestSiFeiAgainstClassics(t *testing.T) {
+	want := map[ganzhi.BranchIndex][]ganzhi.SexagenaryIndex{
+		yin:  {56, 57}, // 春（寅卯辰）：庚申、辛酉
+		si:   {48, 59}, // 夏（巳午未）：壬子、癸亥
+		shen: {50, 51}, // 秋（申酉戌）：甲寅、乙卯
+		hai:  {42, 53}, // 冬（亥子丑）：丙午、丁巳
+	}
+	for month, w := range want {
+		e := siFeiElement[directionGroup(month)]
+		var got []ganzhi.SexagenaryIndex
+		for x := 0; x < 60; x++ {
+			sex := ganzhi.SexagenaryIndex(x)
+			if sex.Stem().Element() == e && sex.Branch().Element() == e {
+				got = append(got, sex)
+			}
+		}
+		if len(got) != len(w) || got[0] != w[0] || got[1] != w[1] {
+			t.Errorf("%s月四廢推導得 %s，典籍為 %s", branchName[month], sexNames(got), sexNames(w))
+		}
+	}
+}
+
+// TestShiEDaBaiAgainstClassics 十惡大敗對照〈論十惡大敗〉所列的十個日柱。
+//
+// 「甲辰、乙巳、壬申、丙申、丁亥、庚辰、戊戌、癸亥、辛巳、己丑」。
+// 推導走「祿入旬空」，不抄這十組——原文自述其理即為「祿入空亡」。
+func TestShiEDaBaiAgainstClassics(t *testing.T) {
+	want := map[ganzhi.SexagenaryIndex]bool{
+		40: true, 41: true, 8: true, 32: true, 23: true, // 甲辰乙巳壬申丙申丁亥
+		16: true, 34: true, 59: true, 17: true, 25: true, // 庚辰戊戌癸亥辛巳己丑
+	}
+	for x := 0; x < 60; x++ {
+		sex := ganzhi.SexagenaryIndex(x)
+		lu := luBranch[int(sex.Stem())]
+		a, b := xunKong(sex)
+		got := lu == a || lu == b
+		if got != want[sex] {
+			t.Errorf("%s%s 推導為 %v，典籍為 %v",
+				stemName[sex.Stem()], branchName[sex.Branch()], got, want[sex])
+		}
+	}
+}
+
+// TestSuiJunOrder 十二歲君須為太歲起順數十二位，不重不漏。
+//
+// 《三命通會·總論諸神煞》的官符「取太歲前五辰」照字面為 +5，該位已為
+// 死符所佔——該書自身即矛盾，故採口訣第五位即 +4。本測試釘住此決定。
+func TestSuiJunOrder(t *testing.T) {
+	order := []Kind{TaiSui, TaiYang, SangMen, TaiYin, GuanFu, SiFu,
+		SuiPo, LongDe, BaiHu, FuDe, DiaoKe, BingFu}
+	if len(suiJunOffset) != ganzhi.BranchCount {
+		t.Fatalf("十二歲君共 %d 位，應為 12", len(suiJunOffset))
+	}
+	for i, k := range order {
+		if suiJunOffset[k] != i {
+			t.Errorf("%s 位移為 %d，應為第 %d 位", k.ID(), suiJunOffset[k], i)
+		}
+	}
+	// 歲破為太歲之對衝——第七位恰為 +6
+	if suiJunOffset[SuiPo] != int(clash(0)) {
+		t.Errorf("歲破位移為 %d，應與對衝一致", suiJunOffset[SuiPo])
+	}
+}
+
+func names(bs []ganzhi.BranchIndex) string {
+	s := ""
+	for _, b := range bs {
+		s += branchName[b]
+	}
+	return s
+}
+
+func sexNames(xs []ganzhi.SexagenaryIndex) string {
+	s := ""
+	for _, x := range xs {
+		s += stemName[x.Stem()] + branchName[x.Branch()]
+	}
+	return s
+}
+
+func sameSet(a, b []ganzhi.BranchIndex) bool {
+	m := map[ganzhi.BranchIndex]int{}
+	for _, x := range a {
+		m[x]++
+	}
+	for _, x := range b {
+		m[x]--
+	}
+	for _, v := range m {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
+}

@@ -11,20 +11,30 @@ package shensha
 // 區段化會製造第二個要維護的立場。
 //
 // iota 順序為實作細節，外界不可觀察——序列化一律走 ID()。
+//
+// # 收錄門檻
+//
+// 每一項都須有典籍出處，取法出自原文而非坊間轉述。查不到出處者一律不收，
+// 不憑印象實作——寧可少一個，不可錯一個。尚待查證者見 destiny-project
+// 的附錄 A。
 type Kind uint8
 
 const (
 	// ── 日干系 ──
 
 	TianYiGuiRen   Kind = iota // 天乙貴人：起坤佈干取合氣
+	TaiJiGuiRen                // 太極貴人：造化始終相保
 	LuShen                     // 祿神：臨官位
+	AnLu                       // 暗祿：祿位之六合
 	YangRen                    // 羊刃：祿位下一支
+	FeiRen                     // 飛刃：羊刃之對衝
 	JinYu                      // 金輿：祿位後二支
 	WenChangGuiRen             // 文昌貴人（紫微系）：陽干病位／陰干長生位
 
 	// ── 三合局系：局五行走一圈十二長生的不同取位 ──
 
 	YiMa      // 驛馬：病位
+	PanAn     // 攀鞍：驛馬後一辰
 	JiangXing // 將星：帝旺位
 	HuaGai    // 華蓋：墓位
 	XianChi   // 咸池（一名桃花）：沐浴位
@@ -37,63 +47,125 @@ const (
 
 	GuChen // 孤辰：本方末支的下一支
 	GuaSu  // 寡宿：本方首支的上一支
+	GeJiao // 隔角：寅申巳亥為角、辰戌丑未為隔
+
+	// ── 月支系 ──
+
+	TianDe   // 天德
+	YueDe    // 月德
+	TianDeHe // 天德合：天德之五合
+	YueDeHe  // 月德合：月德之五合
+	DeXiu    // 德秀貴人
+
+	// ── 年支系 ──
+
+	YuanChen   // 元辰：年支之衝再前後一位
+	GouJiao    // 勾絞：年支 ±3
+	AnJinDeSha // 暗金的煞（一名吟呻、破碎、白衣）
+
+	// ── 納音系 ──
+
+	XueTang       // 學堂：年命納音之長生位，且該柱納音同五行
+	CiGuan        // 詞館：年命納音之臨官位，且該柱納音同五行
+	ZhengYin      // 正印：五行之正庫
+	TianLuoDiWang // 天羅地網：火命看戌亥、水土命看辰巳
+
+	// ── 柱本身 ──
+
+	ShiEDaBai // 十惡大敗：日柱祿神落入該旬空亡
+	SiFei     // 四廢：月令當旺之五行所剋而無氣的日柱
+
+	// ── 全盤 ──
+
+	SanQi // 三奇：四柱天干連續見乙丙丁或甲戊庚
+
+	// ── 十二歲君（星命系，以太歲為基準）──
+
+	TaiSui  // 一：太歲
+	TaiYang // 二：太陽
+	SangMen // 三：喪門
+	TaiYin  // 四：太陰
+	GuanFu  // 五：官符
+	SiFu    // 六：死符
+	SuiPo   // 七：歲破
+	LongDe  // 八：龍德
+	BaiHu   // 九：白虎
+	FuDe    // 十：福德
+	DiaoKe  // 十一：弔客
+	BingFu  // 十二：病符
 
 	KindCount
 )
 
-// category 各神煞的收錄分類，依《三命通會》作者的「命中切要」分界。
-var category = [KindCount]Category{
-	TianYiGuiRen:   CategoryCommon,
-	LuShen:         CategoryCommon,
-	YangRen:        CategoryCommon,
-	JinYu:          CategoryCommon,
-	WenChangGuiRen: CategoryCommon,
-	YiMa:           CategoryCommon,
-	JiangXing:      CategoryCommon,
-	HuaGai:         CategoryCommon,
-	XianChi:        CategoryCommon,
-	JieSha:         CategoryCommon,
-	WangShen:       CategoryCommon,
-	ZaiSha:         CategoryCommon,
-	LiuE:           CategoryCommon,
-	GuChen:         CategoryCommon,
-	GuaSu:          CategoryCommon,
-}
-
-// tradition 體系來源。
+// meta 各神煞的分類、體系與慣用基準。
 //
-// 文昌貴人取自《紫微斗數》（經《命理探源》轉引），與子平典籍的「文昌貴」
-// 是兩個不同的東西——《五行精紀》（宋）與《三命通會》（明）所載的文昌貴
-// 與本項僅甲、戊兩干相同。現代八字排盤軟體一律用紫微系，本套件從眾，
-// 但以本欄位標明來源，並保留日後收錄子平系的空間。
-var tradition = [KindCount]Tradition{
-	WenChangGuiRen: TraditionZiwei,
-	// 其餘皆為 TraditionZiping（零值）
-}
-
-// customaryBasis 各神煞的慣用基準。
+// 分類依《三命通會》作者自述——〈總論諸神煞〉開篇云「命中切要者已備論於
+// 前矣」，卷三前段各有專章者為切要，該章所收為次要。以作者的分界為準，
+// 勝於實作者主觀認定。
 //
-// 有些神煞的基準是有共識的，不是每個都在吵：孤辰寡宿傳統查年支（講六親
-// 孤剋，年為祖上），桃花驛馬今法查日支。故預設各依慣用，BranchBase
-// 僅在使用者明確指定時覆寫。
-var customaryBasis = [KindCount]Basis{
-	TianYiGuiRen:   BasisDayStem,
-	LuShen:         BasisDayStem,
-	YangRen:        BasisDayStem,
-	JinYu:          BasisDayStem,
-	WenChangGuiRen: BasisDayStem,
+// 慣用基準：有些神煞的基準是有共識的，不是每個都在吵。孤辰寡宿傳統查年支
+// （講六親孤剋，年為祖上），桃花驛馬今法查日支。故預設各依慣用，
+// StemBase 與 BranchBase 僅在使用者明確指定時覆寫。
+var meta = [KindCount]struct {
+	category  Category
+	tradition Tradition
+	basis     Basis
+}{
+	TianYiGuiRen:   {CategoryCommon, TraditionZiping, BasisDayStem},
+	TaiJiGuiRen:    {CategorySecondary, TraditionZiping, BasisDayStem},
+	LuShen:         {CategoryCommon, TraditionZiping, BasisDayStem},
+	AnLu:           {CategoryRare, TraditionZiping, BasisDayStem},
+	YangRen:        {CategoryCommon, TraditionZiping, BasisDayStem},
+	FeiRen:         {CategorySecondary, TraditionZiping, BasisDayStem},
+	JinYu:          {CategoryCommon, TraditionZiping, BasisDayStem},
+	WenChangGuiRen: {CategoryCommon, TraditionZiwei, BasisDayStem},
 
-	YiMa:      BasisDayBranch,
-	JiangXing: BasisDayBranch,
-	HuaGai:    BasisDayBranch,
-	XianChi:   BasisDayBranch,
-	JieSha:    BasisDayBranch,
-	WangShen:  BasisDayBranch,
-	ZaiSha:    BasisDayBranch,
-	LiuE:      BasisDayBranch,
+	YiMa:      {CategoryCommon, TraditionZiping, BasisDayBranch},
+	PanAn:     {CategorySecondary, TraditionZiping, BasisDayBranch},
+	JiangXing: {CategoryCommon, TraditionZiping, BasisDayBranch},
+	HuaGai:    {CategoryCommon, TraditionZiping, BasisDayBranch},
+	XianChi:   {CategoryCommon, TraditionZiping, BasisDayBranch},
+	JieSha:    {CategoryCommon, TraditionZiping, BasisDayBranch},
+	WangShen:  {CategoryCommon, TraditionZiping, BasisDayBranch},
+	ZaiSha:    {CategoryCommon, TraditionZiping, BasisDayBranch},
+	LiuE:      {CategoryCommon, TraditionZiping, BasisDayBranch},
 
-	GuChen: BasisYearBranch,
-	GuaSu:  BasisYearBranch,
+	GuChen: {CategoryCommon, TraditionZiping, BasisYearBranch},
+	GuaSu:  {CategoryCommon, TraditionZiping, BasisYearBranch},
+	GeJiao: {CategorySecondary, TraditionZiping, BasisYearBranch},
+
+	TianDe:   {CategoryCommon, TraditionZiping, BasisMonthBranch},
+	YueDe:    {CategoryCommon, TraditionZiping, BasisMonthBranch},
+	TianDeHe: {CategorySecondary, TraditionZiping, BasisMonthBranch},
+	YueDeHe:  {CategorySecondary, TraditionZiping, BasisMonthBranch},
+	DeXiu:    {CategorySecondary, TraditionZiping, BasisMonthBranch},
+
+	YuanChen:   {CategoryCommon, TraditionZiping, BasisYearBranch},
+	GouJiao:    {CategoryCommon, TraditionZiping, BasisYearBranch},
+	AnJinDeSha: {CategorySecondary, TraditionZiping, BasisYearBranch},
+
+	XueTang:       {CategorySecondary, TraditionZiping, BasisSelf},
+	CiGuan:        {CategorySecondary, TraditionZiping, BasisSelf},
+	ZhengYin:      {CategoryRare, TraditionZiping, BasisSelf},
+	TianLuoDiWang: {CategorySecondary, TraditionZiping, BasisSelf},
+
+	ShiEDaBai: {CategorySecondary, TraditionZiping, BasisSelf},
+	SiFei:     {CategoryRare, TraditionZiping, BasisSelf},
+
+	SanQi: {CategorySecondary, TraditionZiping, BasisChart},
+
+	TaiSui:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	TaiYang: {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	SangMen: {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	TaiYin:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	GuanFu:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	SiFu:    {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	SuiPo:   {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	LongDe:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	BaiHu:   {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	FuDe:    {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	DiaoKe:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	BingFu:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
 }
 
 // Category 收錄分類
@@ -101,15 +173,33 @@ func (k Kind) Category() Category {
 	if k >= KindCount {
 		return CategoryRare
 	}
-	return category[k]
+	return meta[k].category
 }
 
-// Tradition 體系來源
+// Tradition 體系來源。
+//
+// 數個神煞名在不同體系指涉不同的東西——文昌（紫微系／子平系）、大耗
+// （元辰別名／十二歲君第七位）、官符（亡神別名／太歲類）、白虎（災煞
+// 別名／歲君第九位）。故除 Kind 值不同外，另以本欄位標明體系。
 func (k Kind) Tradition() Tradition {
 	if k >= KindCount {
 		return TraditionZiping
 	}
-	return tradition[k]
+	return meta[k].tradition
+}
+
+// SubjectOnly 此神煞是否只就「主體本身」的干支成立。
+//
+// 十惡大敗、四廢的典籍原文都是「日」——十惡大敗日、四廢日，說的是命主
+// 那一柱，不是任一柱碰巧湊出同樣的干支組合。本套件位置無關，無從知道
+// 第幾個元素是主體，故只標記，由呼叫方依自己的位置語意過濾：八字取日柱，
+// 六爻取世爻。
+func (k Kind) SubjectOnly() bool {
+	switch k {
+	case ShiEDaBai, SiFei:
+		return true
+	}
+	return false
 }
 
 // CustomaryBasis 慣用基準
@@ -117,5 +207,5 @@ func (k Kind) CustomaryBasis() Basis {
 	if k >= KindCount {
 		return BasisDayBranch
 	}
-	return customaryBasis[k]
+	return meta[k].basis
 }
