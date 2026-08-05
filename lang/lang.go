@@ -58,8 +58,8 @@ type bundle struct {
 	variants   [13]string
 	categories [4]string
 	traditions [3]string
-	topics     [8]string
-	sects      [21]string
+	topics     [11]string
+	sects      [27]string
 
 	warnTerm string
 	warnHour string

@@ -36,7 +36,7 @@ func (c *Chart) detectShenSha(opt Options) {
 	for i, p := range c.Pillars() {
 		natal[i] = p.Sexagenary
 	}
-	c.ShenSha = subjectAtDay(shensha.Detect(in, natal, opt.ShenSha))
+	c.ShenSha = subjectAtDay(shensha.Detect(in, natal, opt.ShenSha), opt.ShenSha)
 
 	if !opt.IncludeDynamicShenSha {
 		return
@@ -61,7 +61,7 @@ func (c *Chart) detectShenSha(opt Options) {
 	// 讓「太歲」每年命中流年支自己，是套套邏輯而非資訊。
 	dynamic := opt.ShenSha
 	dynamic.Exclude = withExcluded(opt.ShenSha.Exclude, func(k shensha.Kind) bool {
-		return k.SubjectOnly() || k.Category() == shensha.CategoryAnnual
+		return opt.ShenSha.SubjectOnly(k) || k.Category() == shensha.CategoryAnnual
 	})
 
 	for i := range c.Fortunes {
@@ -85,10 +85,10 @@ func (c *Chart) detectShenSha(opt Options) {
 //
 // shensha 位置無關，只報構成；八字的主體是日柱，故十惡大敗、四廢出現在
 // 年月時柱不算數——那只是碰巧同一組干支。
-func subjectAtDay(hits []shensha.Hit) []shensha.Hit {
+func subjectAtDay(hits []shensha.Hit, opt shensha.Options) []shensha.Hit {
 	out := hits[:0]
 	for _, h := range hits {
-		if h.Kind.SubjectOnly() && h.At != dayPillarIndex {
+		if opt.SubjectOnly(h.Kind) && h.At != dayPillarIndex {
 			continue
 		}
 		out = append(out, h)

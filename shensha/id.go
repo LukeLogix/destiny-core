@@ -50,6 +50,7 @@ var kindIDs = [KindCount]string{
 	JinShen:        "jin_shen",
 	XunKong:        "xun_kong",
 	SanQi:          "san_qi",
+	TianXiSiShi:    "tian_xi_si_shi",
 	TaiSui:         "tai_sui",
 	TaiYang:        "tai_yang",
 	SangMen:        "sang_men",
@@ -62,6 +63,11 @@ var kindIDs = [KindCount]string{
 	FuDe:           "fu_de",
 	DiaoKe:         "diao_ke",
 	BingFu:         "bing_fu",
+	ShengQi:        "sheng_qi",
+	TianYiSuiJun:   "tian_yi_sui_jun",
+	DaHao:          "da_hao",
+	FaDao:          "fa_dao",
+	DaJi:           "da_ji",
 }
 
 func (k Kind) ID() string { return pickID(kindIDs[:], int(k)) }
@@ -125,6 +131,9 @@ var topicIDs = [topicCount]string{
 	TopicFuXing:     "fu_xing",
 	TopicTianLuo:    "tian_luo",
 	TopicGouJiao:    "gou_jiao",
+	TopicSuiJun:     "sui_jun",
+	TopicJinShen:    "jin_shen",
+	TopicKuiGang:    "kui_gang",
 }
 
 func (x Topic) ID() string { return pickID(topicIDs[:], int(x)) }
@@ -151,6 +160,12 @@ var sectIDs = [sectCount]string{
 	TianLuoBranchOnly:   "tian_luo_branch_only",
 	GouJiaoFrontIsGou:   "gou_jiao_front_is_gou",
 	GouJiaoFrontIsJiao:  "gou_jiao_front_is_jiao",
+	SuiJunShenFeng:      "sui_jun_shen_feng",
+	SuiJunDongWei:       "sui_jun_dong_wei",
+	JinShenAnyDay:       "jin_shen_any_day",
+	JinShenJiaDayOnly:   "jin_shen_jia_day_only",
+	KuiGangAllPillars:   "kui_gang_all_pillars",
+	KuiGangDayOnly:      "kui_gang_day_only",
 }
 
 func (x Sect) ID() string { return pickID(sectIDs[:], int(x)) }

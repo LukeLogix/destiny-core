@@ -433,24 +433,85 @@ func TestShiEDaBaiAgainstClassics(t *testing.T) {
 	}
 }
 
-// TestSuiJunOrder 十二歲君須為太歲起順數十二位，不重不漏。
+// TestSuiJunSets 十二歲君兩組各須為太歲起順數十二位，不重不漏。
 //
+// 神峰組的起例有據：《神峰通考》《命理探源》口訣逐字一致並明言順數。
 // 《三命通會·總論諸神煞》的官符「取太歲前五辰」照字面為 +5，該位已為
 // 死符所佔——該書自身即矛盾，故採口訣第五位即 +4。本測試釘住此決定。
-func TestSuiJunOrder(t *testing.T) {
-	order := []Kind{TaiSui, TaiYang, SangMen, TaiYin, GuanFu, SiFu,
+//
+// 洞微經組的位置係由名單順序推定，非典籍明言（見 D-55）。此處驗證兩件
+// 可獨立查核的事：大耗為太歲對衝（大耗即歲破之別名），以及兩組在
+// 太歲、喪門、官符、死符、弔客、病符六位上同名同位。
+func TestSuiJunSets(t *testing.T) {
+	shenFeng := []Kind{TaiSui, TaiYang, SangMen, TaiYin, GuanFu, SiFu,
 		SuiPo, LongDe, BaiHu, FuDe, DiaoKe, BingFu}
-	if len(suiJunOffset) != ganzhi.BranchCount {
-		t.Fatalf("十二歲君共 %d 位，應為 12", len(suiJunOffset))
-	}
-	for i, k := range order {
-		if suiJunOffset[k] != i {
-			t.Errorf("%s 位移為 %d，應為第 %d 位", k.ID(), suiJunOffset[k], i)
+	dongWei := []Kind{TaiSui, ShengQi, SangMen, TianYiSuiJun, GuanFu, SiFu,
+		DaHao, FaDao, FuDe, DaJi, DiaoKe, BingFu}
+
+	for set, want := range [][]Kind{shenFeng, dongWei} {
+		if len(want) != ganzhi.BranchCount {
+			t.Fatalf("第 %d 組共 %d 位，應為 12", set, len(want))
+		}
+		seen := map[Kind]bool{}
+		for i, k := range want {
+			got, ok := suiJunOffsetOf(k, set)
+			if !ok || got != i {
+				t.Errorf("第 %d 組的 %s 位移為 %d（found=%v），應為第 %d 位",
+					set, k.ID(), got, ok, i)
+			}
+			if seen[k] {
+				t.Errorf("第 %d 組的 %s 重複出現", set, k.ID())
+			}
+			seen[k] = true
 		}
 	}
-	// 歲破為太歲之對衝——第七位恰為 +6
-	if suiJunOffset[SuiPo] != int(clash(0)) {
-		t.Errorf("歲破位移為 %d，應與對衝一致", suiJunOffset[SuiPo])
+
+	// 歲破與大耗同為太歲之對衝，故兩組的第七位皆為 +6
+	for set, k := range []Kind{SuiPo, DaHao} {
+		n, _ := suiJunOffsetOf(k, set)
+		if n != int(clash(0)) {
+			t.Errorf("%s 位移為 %d，應與對衝一致（%d）", k.ID(), n, clash(0))
+		}
+	}
+
+	// 兩組同名同位者：太歲、喪門、官符、死符、弔客、病符
+	for _, k := range []Kind{TaiSui, SangMen, GuanFu, SiFu, DiaoKe, BingFu} {
+		a, oka := suiJunOffsetOf(k, 0)
+		b, okb := suiJunOffsetOf(k, 1)
+		if !oka || !okb || a != b {
+			t.Errorf("%s 在兩組的位次為 %d/%d，應相同——若日後改動，"+
+				"洞微組位置由名單順序推定的佐證即失效", k.ID(), a, b)
+		}
+	}
+
+	// 福德兩組皆有而位次不同，正是推定撐不住之處。釘住它，
+	// 免得日後有人「順手對齊」而抹掉這個已知的不確定性。
+	a, _ := suiJunOffsetOf(FuDe, 0)
+	b, _ := suiJunOffsetOf(FuDe, 1)
+	if a == b {
+		t.Errorf("福德在兩組同為第 %d 位——但洞微名單排第九、神峰組排第十，"+
+			"兩者本就不同。若確有依據對齊，請一併更新 D-55 的說明", a)
+	}
+}
+
+// TestTianXiSiShiAgainstClassics 四時天喜對照典籍。
+//
+// 《三命通會·總論諸神煞》「此外又有天喜神，春戌夏丑秋辰冬未」；
+// 《五行精紀》〈天神喜〉「春戌夏丑逢天喜，秋辰冬未三三指」——兩書一致。
+// 與鸞喜歌的天喜同名異物，故為不同的 Kind。
+func TestTianXiSiShiAgainstClassics(t *testing.T) {
+	want := map[ganzhi.BranchIndex]ganzhi.BranchIndex{
+		yin: xu, si: chou, shen: chen, hai: wei, // 春戌 夏丑 秋辰 冬未
+	}
+	for month, w := range want {
+		if got := tianXiSiShi[directionGroup(month)]; got != w {
+			t.Errorf("%s月四時天喜推導得 %s，典籍為 %s",
+				branchName[month], branchName[got], branchName[w])
+		}
+	}
+	// 與鸞喜的天喜不可同位混淆：後者以年支起，前者以月令季節起
+	if TianXi == TianXiSiShi {
+		t.Error("兩個天喜共用同一個 Kind——同名異物須分開")
 	}
 }
 

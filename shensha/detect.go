@@ -372,8 +372,20 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return len(g)
 
 	case TaiSui, TaiYang, SangMen, TaiYin, GuanFu, SiFu,
-		SuiPo, LongDe, BaiHu, FuDe, DiaoKe, BingFu:
-		return one(wrap(int(in.Annual.Branch()) + suiJunOffset[k]))
+		SuiPo, LongDe, BaiHu, FuDe, DiaoKe, BingFu,
+		ShengQi, TianYiSuiJun, DaHao, FaDao, DaJi:
+		set := 0
+		if opt.sect(TopicSuiJun) == SuiJunDongWei {
+			set = 1
+		}
+		n, ok := suiJunOffsetOf(k, set)
+		if !ok {
+			return 0 // 該歲君不屬於目前選用的那一組
+		}
+		return one(wrap(int(in.Annual.Branch()) + n))
+
+	case TianXiSiShi:
+		return one(tianXiSiShi[directionGroup(in.MonthBranch)])
 
 	case TianYiGuiRen:
 		stem := in.baseStem(b)
@@ -475,6 +487,11 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input, opt Options) (Variant
 		return VariantNone, sex == tianSheSex[directionGroup(in.MonthBranch)]
 
 	case JinShen:
+		// 《三命通會》另加「此格六甲日為主」，《淵海子平》與《神峰通考》
+		// 皆不設此限且神峰所舉命例正是己未日，故列為主題而非逕自取捨。
+		if opt.sect(TopicJinShen) == JinShenJiaDayOnly && in.DayStem != 0 {
+			return VariantNone, false
+		}
 		for _, x := range jinShenSex {
 			if sex == x {
 				return VariantNone, true

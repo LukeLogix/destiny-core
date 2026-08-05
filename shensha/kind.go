@@ -97,7 +97,15 @@ const (
 
 	SanQi // 三奇：四柱天干連續見乙丙丁或甲戊庚
 
+	// ── 四時天喜（與鸞喜的天喜同名異物）──
+
+	TianXiSiShi // 四時天喜：春戌、夏丑、秋辰、冬未
+
 	// ── 十二歲君（星命系，以太歲為基準）──
+	//
+	// 兩組並存，同一條十二位的軸上各給各的名。神峰通考／命理探源那組有
+	// 「以太歲為第一位順數」的起例；洞微經那組只有名單，位置係推定。
+	// 由 TopicSuiJun 切換，見決策日誌 D-55。
 
 	TaiSui  // 一：太歲
 	TaiYang // 二：太陽
@@ -111,6 +119,15 @@ const (
 	FuDe    // 十：福德
 	DiaoKe  // 十一：弔客
 	BingFu  // 十二：病符
+
+	// 洞微經組獨有的五位。太歲、喪門、官符、死符、弔客、病符六位兩組同名
+	// 同位，福德兩組皆有而位次不同，故只需補這五個。
+
+	ShengQi      // 洞微經第二位：生氣
+	TianYiSuiJun // 洞微經第四位：天醫。非天乙——兩者拼音同形，故加體系後綴
+	DaHao        // 洞微經第七位：大耗。與神峰組的歲破同位，係對衝之異名
+	FaDao        // 洞微經第八位：發盜
+	DaJi         // 洞微經第十位：大吉
 
 	KindCount
 )
@@ -196,6 +213,14 @@ var meta = [KindCount]struct {
 	FuDe:    {CategoryAnnual, TraditionSuiJun, BasisAnnual},
 	DiaoKe:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
 	BingFu:  {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+
+	ShengQi:      {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	TianYiSuiJun: {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	DaHao:        {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	FaDao:        {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+	DaJi:         {CategoryAnnual, TraditionSuiJun, BasisAnnual},
+
+	TianXiSiShi: {CategoryRare, TraditionZiping, BasisMonthBranch},
 }
 
 // Category 收錄分類

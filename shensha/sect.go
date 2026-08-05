@@ -38,6 +38,12 @@ const (
 	TopicTianLuo
 	// TopicGouJiao 勾與絞的方向。只影響 Variant 標記，不影響是否命中。
 	TopicGouJiao
+	// TopicSuiJun 十二歲君用哪一組名。同一條軸，兩組傳承各給各的名。
+	TopicSuiJun
+	// TopicJinShen 金神要不要加「六甲日」的限制
+	TopicJinShen
+	// TopicKuiGang 魁罡只論日柱，還是四柱重見皆論
+	TopicKuiGang
 
 	topicCount
 )
@@ -126,6 +132,37 @@ const (
 	// 該書自註即與此相反，係書內異說。
 	GouJiaoFrontIsJiao
 
+	// ── 十二歲君 ──
+
+	// SuiJunShenFeng 《神峰通考》《命理探源》：太歲、太陽、喪門、太陰、官符、
+	// 死符、歲破、龍德、白虎、福德、弔客、病符。明言「以太歲為第一位順數」，
+	// 起例有據，故為預設。
+	SuiJunShenFeng
+	// SuiJunDongWei 《五行精紀》引《洞微經》：太歲、生氣、喪門、天醫、官符、
+	// 死符、大耗、發盜、福德、大吉、弔客、病符。
+	//
+	// 該書只列名單無起例，全語料僅此一見。十二個位置係由名單順序推定——
+	// 大耗第七位即太歲對衝可獨立驗證，喪門、官符、死符、弔客、病符五位
+	// 與神峰組同名同位；但福德本組排第九而神峰組排第十，同名異位。
+	// 推定不完備，故非預設。
+	SuiJunDongWei
+
+	// ── 金神 ──
+
+	// JinShenAnyDay 不限日干。《淵海子平》《神峰通考》皆不設此限，
+	// 且神峰所舉命例為己未日，故為預設。
+	JinShenAnyDay
+	// JinShenJiaDayOnly 《三命通會》〈金神〉「此格六甲日為主」，限甲日。
+	JinShenJiaDayOnly
+
+	// ── 魁罡 ──
+
+	// KuiGangAllPillars 四柱重見皆論。《三命通會》「魁罡四日最為先，
+	// 疊疊相逢掌大權」「魁罡四柱日多同」，明白肯定重見有義，故為預設。
+	KuiGangAllPillars
+	// KuiGangDayOnly 只論日柱。同章稱其為「魁罡四日」，市面實作多數如此。
+	KuiGangDayOnly
+
 	sectCount
 )
 
@@ -139,6 +176,9 @@ var topicSects = [topicCount][]Sect{
 	TopicFuXing:     {FuXingHourStem, FuXingShenFeng},
 	TopicTianLuo:    {TianLuoBySound, TianLuoBranchOnly},
 	TopicGouJiao:    {GouJiaoFrontIsGou, GouJiaoFrontIsJiao},
+	TopicSuiJun:     {SuiJunShenFeng, SuiJunDongWei},
+	TopicJinShen:    {JinShenAnyDay, JinShenJiaDayOnly},
+	TopicKuiGang:    {KuiGangAllPillars, KuiGangDayOnly},
 }
 
 // topicKinds 各主題影響哪些神煞。空表示影響面不限於特定幾個（基準之爭）。
@@ -151,6 +191,10 @@ var topicKinds = [topicCount][]Kind{
 	TopicFuXing:   {FuXingGuiRen},
 	TopicTianLuo:  {TianLuoDiWang},
 	TopicGouJiao:  {GouJiao},
+	TopicJinShen:  {JinShen},
+	TopicKuiGang:  {KuiGang},
+	TopicSuiJun: {TaiYang, TaiYin, SuiPo, LongDe, BaiHu, FuDe,
+		ShengQi, TianYiSuiJun, DaHao, FaDao, DaJi},
 }
 
 // Topics 全部主題，供呼叫方列舉。
@@ -234,6 +278,17 @@ func (o Options) sect(t Topic) Sect {
 		}
 	}
 	return choices[0]
+}
+
+// SubjectOnly 在此口徑下，該神煞是否只就主體本身的干支成立。
+//
+// 位置知識不在本套件——由呼叫方依自己的位置語意過濾，八字取日柱、
+// 六爻取世爻。魁罡的兩派之爭即在此：只論日柱，還是四柱重見皆論。
+func (o Options) SubjectOnly(k Kind) bool {
+	if k == KuiGang {
+		return o.sect(TopicKuiGang) == KuiGangDayOnly
+	}
+	return k.SubjectOnly()
 }
 
 // enabled 判斷某神煞是否納入計算。

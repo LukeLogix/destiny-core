@@ -417,6 +417,9 @@ func TestTopicKindsAreAffected(t *testing.T) {
 					DayStem: ganzhi.StemIndex(stem), YearStem: ganzhi.StemIndex(stem),
 					DayBranch: 9, YearBranch: 6, MonthBranch: 5,
 					IsMale: male, YearSound: snd,
+					// 太歲類離開流年即不成立，不給流年則歲君那個主題必然
+					// 看不出差異——掃描面須涵蓋分歧，這是本測試的前提
+					Annual: ganzhi.SexagenaryIndex(stem), HasAnnual: true,
 				})
 			}
 		}
@@ -433,6 +436,15 @@ func TestTopicKindsAreAffected(t *testing.T) {
 		}
 		sects := tp.Sects()
 		var differs bool
+
+		// 有些主題不改變 Detect 的輸出，而是改變呼叫方該怎麼取捨——
+		// 魁罡的「只論日柱／四柱皆論」即是，位置知識不在本套件。
+		for _, k := range kinds {
+			if Default().With(sects[0]).SubjectOnly(k) != Default().With(sects[1]).SubjectOnly(k) {
+				differs = true
+			}
+		}
+
 		for _, in := range inputs {
 			base := Detect(in, all, Options{Include: kinds, Categories: []Category{}}.With(sects[0]))
 			for _, s := range sects[1:] {
@@ -443,8 +455,8 @@ func TestTopicKindsAreAffected(t *testing.T) {
 			}
 		}
 		if !differs {
-			t.Errorf("主題 %s 宣告影響 %v，但掃遍十干、男女、五種納音後切換取法"+
-				"結果完全相同——若非實作漏接，就是這個主題根本不成立", tp.ID(), kinds)
+			t.Errorf("主題 %s 宣告影響 %v，但掃遍十干、男女、五種納音、流年後，"+
+				"切換取法既不改變命中也不改變 SubjectOnly——若非實作漏接，就是這個主題根本不成立", tp.ID(), kinds)
 		}
 	}
 }
