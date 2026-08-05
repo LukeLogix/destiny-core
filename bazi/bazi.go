@@ -110,6 +110,8 @@ func Compute(b Birth, opt Options) (*Chart, error) {
 		c.Strengths = append(c.Strengths, s.Evaluate(in))
 	}
 
+	c.detectShenSha(opt)
+
 	return c, nil
 }
 
@@ -121,8 +123,8 @@ func makePillar(sex ganzhi.SexagenaryIndex, dayMaster ganzhi.StemIndex, opt Opti
 		Branch:     branch,
 		StemTenGod: TenGodOf(dayMaster, stem),
 		Hidden:     HiddenTenGods(branch, dayMaster, opt.HiddenStem),
-		Terrain:    TerrainOf(dayMaster, branch, opt.Terrain),
-		Sound:      SoundOf(sex),
+		Terrain:    ganzhi.TerrainOf(dayMaster, branch, opt.Terrain),
+		Sound:      ganzhi.SoundOf(sex),
 	}
 }
 

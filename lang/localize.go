@@ -3,13 +3,14 @@ package lang
 import (
 	"github.com/LukeLogix/destiny-core/bazi"
 	"github.com/LukeLogix/destiny-core/ganzhi"
+	"github.com/LukeLogix/destiny-core/shensha"
 )
 
 // LocalizedHiddenStem 藏干的文字形式
 type LocalizedHiddenStem struct {
 	Stem   string `json:"stem"`
-	Type   string `json:"type"`
-	TenGod string `json:"ten_god"`
+	Type   Term   `json:"type"`
+	TenGod Term   `json:"ten_god"`
 }
 
 // LocalizedPillar 一柱的文字形式
@@ -17,47 +18,77 @@ type LocalizedPillar struct {
 	Sexagenary string                `json:"sexagenary"`
 	Stem       string                `json:"stem"`
 	Branch     string                `json:"branch"`
-	StemTenGod string                `json:"stem_ten_god"`
+	StemTenGod Term                  `json:"stem_ten_god"`
 	Hidden     []LocalizedHiddenStem `json:"hidden"`
-	Terrain    string                `json:"terrain"`
-	Sound      string                `json:"sound"`
+	Terrain    Term                  `json:"terrain"`
+	Sound      Term                  `json:"sound"`
 }
 
 // LocalizedStrength 旺衰結果的文字形式
 type LocalizedStrength struct {
-	Strategy   string             `json:"strategy"`
-	Verdict    string             `json:"verdict"`
+	Strategy   Term               `json:"strategy"`
+	Verdict    Term               `json:"verdict"`
 	Ratio      float64            `json:"ratio"`
 	Elements   map[string]float64 `json:"elements"`
 	Supporting float64            `json:"supporting"`
 	Draining   float64            `json:"draining"`
-	Reasons    []string           `json:"reasons"`
+	Reasons    []Term             `json:"reasons"`
 }
 
 // LocalizedAnnualYear 流年的文字形式
 type LocalizedAnnualYear struct {
 	Year       int    `json:"year"`
 	Sexagenary string `json:"sexagenary"`
-	TenGod     string `json:"ten_god"`
+	TenGod     Term   `json:"ten_god"`
+
+	// ShenSha 僅 bazi.Options.IncludeDynamicShenSha 為 true 時有值。
+	// 以原局為基準、落在本流年柱者，故 At 恆為 0。
+	ShenSha []LocalizedShenSha `json:"shen_sha,omitempty"`
+
+	// SuiJunShenSha 十二歲君，方向相反——以本年太歲為基準，落在原局四柱，
+	// At 為柱序。與 ShenSha 分欄，因兩者的 At 語意不同。
+	SuiJunShenSha []LocalizedShenSha `json:"sui_jun_shen_sha,omitempty"`
 }
 
 // LocalizedFortune 大運的文字形式
 type LocalizedFortune struct {
 	Sexagenary string                `json:"sexagenary"`
-	TenGod     string                `json:"ten_god"`
+	TenGod     Term                  `json:"ten_god"`
 	StartAge   int                   `json:"start_age"`
 	EndAge     int                   `json:"end_age"`
 	StartYear  int                   `json:"start_year"`
 	Years      []LocalizedAnnualYear `json:"years"`
+
+	// ShenSha 僅 bazi.Options.IncludeDynamicShenSha 為 true 時有值
+	ShenSha []LocalizedShenSha `json:"shen_sha,omitempty"`
 }
 
 // LocalizedRelation 干支關係的文字形式
 type LocalizedRelation struct {
-	Kind    string   `json:"kind"`
-	Pillars []string `json:"pillars"`
+	Kind    Term   `json:"kind"`
+	Pillars []Term `json:"pillars"`
 	// Transform 僅合會類有值，且語意為「若化則化為此五行」而非「已化」——
 	// 化與不化取決於得令、引化之神、是否被沖破，各家分歧極大，核心不作此判定。
-	Transform string `json:"transform,omitempty"`
+	Transform *Term `json:"transform,omitempty"`
+}
+
+// LocalizedShenSha 一筆神煞的文字形式。
+//
+// Basis 與 Variant 一併交出：BranchBase 開「兩者皆查」時同一柱可自年支與
+// 日支各命中一次，上層須能分辨來源；天乙的陽貴陰貴、羊刃的陽干陰干刃亦然。
+type LocalizedShenSha struct {
+	Kind  Term `json:"kind"`
+	At    int  `json:"at"`
+	Basis Term `json:"basis"`
+	// Variant 用指標——omitempty 對 struct 無效，用值型別會讓無雙軌之分的
+	// 神煞也帶一個 {"id":"none","name":""} 的雜訊欄位。
+	Variant *Term `json:"variant,omitempty"`
+
+	// Category 收錄分類，供上層分組呈現
+	Category Term `json:"category"`
+	// Tradition 體系來源。數個神煞名在不同體系指涉不同的東西，
+	// 如文昌（紫微系／子平系）、大耗（元辰別名／十二歲君第七位）。
+	Tradition Term `json:"tradition"`
 }
 
 // LocalizedBoundary 臨界數值。除了人看的警示文字，數值本身也要交出，
@@ -73,20 +104,20 @@ type LocalizedBoundary struct {
 // LocalizedOptions 排盤所用口徑。命盤的可重現性靠它，
 // 故不得在序列化時被丟棄。
 type LocalizedOptions struct {
-	LateZiKeepsDay bool   `json:"late_zi_keeps_day"`
-	SolarTime      string `json:"solar_time"`
-	HiddenStemSect uint8  `json:"hidden_stem_sect"`
-	TerrainSect    uint8  `json:"terrain_sect"`
-	ChildLimitSect uint8  `json:"child_limit_sect"`
-	HalfTrinity    bool   `json:"include_half_trinity"`
-	Destruction    bool   `json:"include_destruction"`
+	LateZiKeepsDay bool `json:"late_zi_keeps_day"`
+	SolarTime      Term `json:"solar_time"`
+	HiddenStemSect Term `json:"hidden_stem_sect"`
+	TerrainSect    Term `json:"terrain_sect"`
+	ChildLimitSect Term `json:"child_limit_sect"`
+	HalfTrinity    bool `json:"include_half_trinity"`
+	Destruction    bool `json:"include_destruction"`
 }
 
 // LocalizedChart 可直接序列化給前端或 LLM 的命盤。
 type LocalizedChart struct {
 	Locale    string `json:"locale"`
 	BirthTime string `json:"birth_time"`
-	Gender    string `json:"gender"`
+	Gender    Term   `json:"gender"`
 
 	DayMaster string `json:"day_master"`
 
@@ -96,9 +127,12 @@ type LocalizedChart struct {
 	Hour  LocalizedPillar `json:"hour"`
 
 	Strengths []LocalizedStrength `json:"strengths"`
-	Consensus string              `json:"consensus"`
+	Consensus Term                `json:"consensus"`
 
 	Relations []LocalizedRelation `json:"relations"`
+
+	// ShenSha 原局四柱的神煞。以太歲為基準者只出現在流年層。
+	ShenSha []LocalizedShenSha `json:"shen_sha,omitempty"`
 
 	// 稽核用欄位
 	EffectiveTime   string             `json:"effective_time"`
@@ -144,9 +178,9 @@ func Localize(c *bazi.Chart, loc Locale) *LocalizedChart {
 		Options: &LocalizedOptions{
 			LateZiKeepsDay: c.Options.LateZiKeepsDay,
 			SolarTime:      b.SolarTime(c.Options.SolarTime),
-			HiddenStemSect: uint8(c.Options.HiddenStem),
-			TerrainSect:    uint8(c.Options.Terrain),
-			ChildLimitSect: uint8(c.Options.ChildLimit),
+			HiddenStemSect: term(c.Options.HiddenStem.ID(), b.hiddenStemSects[:], int(c.Options.HiddenStem)),
+			TerrainSect:    term(c.Options.Terrain.ID(), b.terrainSects[:], int(c.Options.Terrain)),
+			ChildLimitSect: term(c.Options.ChildLimit.ID(), b.childLimitSects[:], int(c.Options.ChildLimit)),
 			HalfTrinity:    c.Options.Relation.IncludeHalfTrinity,
 			Destruction:    c.Options.Relation.IncludeDestruction,
 		},
@@ -155,6 +189,7 @@ func Localize(c *bazi.Chart, loc Locale) *LocalizedChart {
 	for _, r := range c.Relations {
 		out.Relations = append(out.Relations, localizeRelation(b, r))
 	}
+	out.ShenSha = localizeShenSha(b, c.ShenSha)
 
 	for _, s := range c.Strengths {
 		out.Strengths = append(out.Strengths, localizeStrength(b, s))
@@ -179,9 +214,37 @@ func localizeRelation(b *bundle, r ganzhi.Relation) LocalizedRelation {
 		lr.Pillars = append(lr.Pillars, b.Pillar(i))
 	}
 	if r.Transform != nil {
-		lr.Transform = b.Element(*r.Transform)
+		t := b.Element(*r.Transform)
+		lr.Transform = &t
 	}
 	return lr
+}
+
+func localizeShenSha(b *bundle, hits []shensha.Hit) []LocalizedShenSha {
+	if len(hits) == 0 {
+		return nil
+	}
+	out := make([]LocalizedShenSha, 0, len(hits))
+	for _, h := range hits {
+		out = append(out, LocalizedShenSha{
+			Kind:      b.ShenSha(h.Kind),
+			At:        h.At,
+			Basis:     b.Basis(h.Basis),
+			Variant:   variantTerm(b, h.Variant),
+			Category:  b.Category(h.Kind.Category()),
+			Tradition: b.Tradition(h.Kind.Tradition()),
+		})
+	}
+	return out
+}
+
+// variantTerm 無雙軌之分者回 nil，讓該欄位自 JSON 中消失。
+func variantTerm(b *bundle, v shensha.Variant) *Term {
+	if v == shensha.VariantNone {
+		return nil
+	}
+	t := b.Variant(v)
+	return &t
 }
 
 func localizePillar(b *bundle, p bazi.Pillar) LocalizedPillar {
@@ -205,7 +268,7 @@ func localizePillar(b *bundle, p bazi.Pillar) LocalizedPillar {
 
 func localizeStrength(b *bundle, s bazi.StrengthResult) LocalizedStrength {
 	ls := LocalizedStrength{
-		Strategy:   strategyName(s.StrategyID),
+		Strategy:   strategyName(b, s.StrategyID),
 		Verdict:    b.Verdict(s.Verdict),
 		Ratio:      s.Ratio,
 		Supporting: s.Supporting,
@@ -228,58 +291,44 @@ func localizeFortune(b *bundle, f bazi.DecadeFortune) LocalizedFortune {
 		StartAge:   f.StartAge,
 		EndAge:     f.EndAge,
 		StartYear:  f.StartYear,
+		ShenSha:    localizeShenSha(b, f.ShenSha),
 	}
 	for _, y := range f.Years {
 		lf.Years = append(lf.Years, LocalizedAnnualYear{
-			Year:       y.Year,
-			Sexagenary: b.Sexagenary(y.Sexagenary),
-			TenGod:     b.TenGod(y.StemTenGod),
+			Year:          y.Year,
+			Sexagenary:    b.Sexagenary(y.Sexagenary),
+			TenGod:        b.TenGod(y.StemTenGod),
+			ShenSha:       localizeShenSha(b, y.ShenSha),
+			SuiJunShenSha: localizeShenSha(b, y.SuiJunShenSha),
 		})
 	}
 	return lf
 }
 
-func hiddenTypeName(b *bundle, t bazi.HiddenStemType) string {
-	names := [3]string{"本氣", "中氣", "餘氣"}
+func hiddenTypeName(b *bundle, t bazi.HiddenStemType) Term {
+	return term(t.ID(), b.hiddenTypes[:], int(t))
+}
+
+func genderName(b *bundle, g bazi.Gender) Term {
+	return term(g.ID(), b.genders[:], int(g))
+}
+
+// consensusName 綜合結論。分歧本身即為訊號，故與身強身弱並列為一個分類值，
+// 而非在文字裡混一句話——上層要據以分支時有穩定的 ID 可用。
+func consensusName(b *bundle, c bazi.Consensus) Term {
+	return term(c.ID(), b.consensuses[:], int(c))
+}
+
+func strategyName(b *bundle, id bazi.StrategyID) Term {
+	return Term{ID: id.ID(), Name: strategyDisplay(b, id)}
+}
+
+// strategyDisplay 策略的顯示名。此前只給 ID（"weighted"），使用者看到的是
+// 程式識別字而非人話，destiny-lab 因而得自備一份中文對照。
+func strategyDisplay(b *bundle, id bazi.StrategyID) string {
+	names := [2]string{"加權法", "傳統格局法"}
 	if b == bundles[ZhCN] {
-		names = [3]string{"本气", "中气", "余气"}
+		names = [2]string{"加权法", "传统格局法"}
 	}
-	if int(t) < len(names) {
-		return names[t]
-	}
-	return ""
-}
-
-func genderName(b *bundle, g bazi.Gender) string {
-	switch g {
-	case bazi.Male:
-		return "男"
-	case bazi.Female:
-		return "女"
-	default:
-		return ""
-	}
-}
-
-func consensusName(b *bundle, c bazi.Consensus) string {
-	switch c {
-	case bazi.ConsensusStrong:
-		return b.Verdict(bazi.VerdictStrong)
-	case bazi.ConsensusWeak:
-		return b.Verdict(bazi.VerdictWeak)
-	default:
-		if b == bundles[ZhCN] {
-			return "有分歧"
-		}
-		return "有分歧"
-	}
-}
-
-func strategyName(id bazi.StrategyID) string {
-	switch id {
-	case bazi.StrategyWeighted:
-		return "weighted"
-	default:
-		return "classical"
-	}
+	return pick(names[:], int(id))
 }
