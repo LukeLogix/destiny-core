@@ -472,3 +472,45 @@ func equalHits(a, b []Hit) bool {
 	}
 	return true
 }
+
+// TestInconsistentInputDoesNotPanic Input 的干支陰陽不合時不得 panic。
+//
+// Input 的 DayStem 與 DayBranch 是兩個獨立欄位，湊出不合法的組合很容易
+// （陽干配陰支）。空亡要定旬、魁罡要判日柱，兩者都需要完整干支——先前
+// 以會 panic 的 sexFrom 取，等於讓呼叫方的設定錯誤炸掉整個函式庫。
+//
+// 此 bug 隨空亡引入，直到主題影響測試把掃描面擴大到魁罡才浮現。
+func TestInconsistentInputDoesNotPanic(t *testing.T) {
+	scan := make([]ganzhi.SexagenaryIndex, ganzhi.SexagenaryCount)
+	for i := range scan {
+		scan[i] = ganzhi.SexagenaryIndex(i)
+	}
+	var checked int
+	for stem := 0; stem < ganzhi.StemCount; stem++ {
+		for branch := 0; branch < ganzhi.BranchCount; branch++ {
+			if stem%2 == branch%2 {
+				continue // 合法組合，不是本測試的對象
+			}
+			checked++
+			in := Input{
+				DayStem: ganzhi.StemIndex(stem), DayBranch: ganzhi.BranchIndex(branch),
+				YearStem: ganzhi.StemIndex(stem), YearBranch: ganzhi.BranchIndex(branch),
+				MonthBranch: 5,
+			}
+			for _, sect := range TopicBranchBase.Sects() {
+				hits := Detect(in, scan, Default().With(sect))
+				// 定不出旬者不得產生空亡或魁罡的命中
+				for _, h := range hits {
+					if h.Kind == XunKong || h.Kind == KuiGang {
+						t.Errorf("干支不合的 Input（%d/%d）竟產生 %s 的命中",
+							stem, branch, h.Kind.ID())
+					}
+				}
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("沒有測到任何不合法組合——迴圈條件寫反了")
+	}
+	t.Logf("測過 %d 組陰陽不合的干支，皆未 panic", checked)
+}

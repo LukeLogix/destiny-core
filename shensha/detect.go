@@ -177,11 +177,11 @@ func (in Input) baseBranch(b Basis) ganzhi.BranchIndex {
 
 // basePillar 取指定基準的整組干支。空亡須知該柱屬哪一旬，拆開的干與支
 // 各自都不足以決定旬首。
-func (in Input) basePillar(b Basis) ganzhi.SexagenaryIndex {
+func (in Input) basePillar(b Basis) (ganzhi.SexagenaryIndex, bool) {
 	if b == BasisYearPillar {
-		return sexFrom(in.YearStem, in.YearBranch)
+		return sexFromOK(in.YearStem, in.YearBranch)
 	}
-	return sexFrom(in.DayStem, in.DayBranch)
+	return sexFromOK(in.DayStem, in.DayBranch)
 }
 
 // baseStem 取指定基準的天干值
@@ -281,7 +281,11 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 
 	case XunKong:
 		// 〈六甲空亡〉：「甲子旬中無戌亥，甲戌旬中無申酉⋯」——該旬缺的兩支
-		a, c := xunKong(in.basePillar(b))
+		pillar, ok := in.basePillar(b)
+		if !ok {
+			return 0 // Input 的干支陰陽不合，定不出旬
+		}
+		a, c := xunKong(pillar)
 		out[0] = target{branch: a}
 		out[1] = target{branch: c}
 		return 2
@@ -476,12 +480,14 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input, opt Options) (Variant
 		return VariantNone, lu == a || lu == b
 
 	case KuiGang:
-		for _, x := range kuiGangSex {
-			if sex == x {
-				return VariantNone, true
-			}
+		// 日柱本身須為魁罡，這是兩派共同的前提——「疊疊相逢」說的是日柱
+		// 已為魁罡而他柱又見，非任一柱各自成立。此判定不需位置知識：
+		// 「主體那一柱」就是 Input 的日干支本身。
+		day, ok := sexFromOK(in.DayStem, in.DayBranch)
+		if !ok || !isKuiGang(day) {
+			return VariantNone, false
 		}
-		return VariantNone, false
+		return VariantNone, isKuiGang(sex)
 
 	case TianShe:
 		return VariantNone, sex == tianSheSex[directionGroup(in.MonthBranch)]

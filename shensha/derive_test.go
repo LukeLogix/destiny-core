@@ -726,3 +726,66 @@ func TestXunKongAgainstClassics(t *testing.T) {
 		}
 	}
 }
+
+// TestKuiGangRequiresKuiGangDay 魁罡以日柱為前提，他柱重見才算重疊。
+//
+// 《三命通會》全章以日柱立論，末尾所舉二例的魁罡皆在日柱，且稱之為
+// 「魁罡日」——本測試即以那兩例為 ground truth：
+//
+//	張時僉事　庚午 丁亥 戊戌 丙辰
+//	劉大受少卿 丁亥 癸丑 庚戌 戊寅
+//
+// 初版把「疊疊相逢掌大權」讀成任一柱各自成立，於日柱非魁罡的盤上仍報出
+// 他柱的魁罡干支。重疊預設了日柱本身已是魁罡，見 D-59。
+func TestKuiGangRequiresKuiGangDay(t *testing.T) {
+	pair := func(st ganzhi.StemIndex, br ganzhi.BranchIndex) ganzhi.SexagenaryIndex {
+		return sexFrom(st, br)
+	}
+	kuiGangOf := func(in Input, scan []ganzhi.SexagenaryIndex) []int {
+		var at []int
+		for _, h := range Detect(in, scan, Options{Include: []Kind{KuiGang}, Categories: []Category{}}) {
+			at = append(at, h.At)
+		}
+		return at
+	}
+
+	// 典籍二例：日柱為魁罡，故成立
+	for _, c := range []struct {
+		label string
+		p     [4]ganzhi.SexagenaryIndex
+		day   [2]int // 日干、日支
+	}{
+		{"張時僉事 庚午 丁亥 戊戌 丙辰",
+			[4]ganzhi.SexagenaryIndex{pair(6, wu), pair(3, hai), pair(4, xu), pair(2, chen)}, [2]int{4, xu}},
+		{"劉大受少卿 丁亥 癸丑 庚戌 戊寅",
+			[4]ganzhi.SexagenaryIndex{pair(3, hai), pair(9, chou), pair(6, xu), pair(4, yin)}, [2]int{6, xu}},
+	} {
+		in := Input{
+			DayStem: ganzhi.StemIndex(c.day[0]), DayBranch: ganzhi.BranchIndex(c.day[1]),
+			YearStem: c.p[0].Stem(), YearBranch: c.p[0].Branch(), MonthBranch: c.p[1].Branch(),
+		}
+		at := kuiGangOf(in, c.p[:])
+		if len(at) == 0 {
+			t.Errorf("%s：日柱為魁罡卻無命中", c.label)
+			continue
+		}
+		found := false
+		for _, x := range at {
+			if x == 2 {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s：命中於 %v，未含日柱", c.label, at)
+		}
+	}
+
+	// 反面：日柱非魁罡，即使他柱有魁罡干支也不成立。
+	// 戊辰 己未 丁亥 庚戌——時柱庚戌是魁罡四組之一，但日柱丁亥不是。
+	in := Input{DayStem: 3, DayBranch: hai, YearStem: 4, YearBranch: chen, MonthBranch: wei}
+	scan := []ganzhi.SexagenaryIndex{pair(4, chen), pair(5, wei), pair(3, hai), pair(6, xu)}
+	if at := kuiGangOf(in, scan); len(at) != 0 {
+		t.Errorf("日柱丁亥非魁罡，卻於 %v 報出命中——"+
+			"「疊疊相逢」的前提是日柱已為魁罡，非任一柱各自成立", at)
+	}
+}

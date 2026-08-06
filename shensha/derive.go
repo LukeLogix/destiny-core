@@ -393,12 +393,28 @@ func xunKong(sex ganzhi.SexagenaryIndex) (ganzhi.BranchIndex, ganzhi.BranchIndex
 // 十干十二支同陰陽者必有唯一組合。手算這個序位是錯誤高發處——四廢初版
 // 八組錯了四組——故一律由此函式算，不寫死。
 func sexFrom(stem ganzhi.StemIndex, branch ganzhi.BranchIndex) ganzhi.SexagenaryIndex {
+	x, ok := sexFromOK(stem, branch)
+	if !ok {
+		panic("shensha: stem and branch have opposite polarity")
+	}
+	return x
+}
+
+// sexFromOK 同上，但陰陽不合時回 false 而非 panic。
+//
+// 兩個版本的分工是刻意的：sexFrom 用於套件初始化時建表，那裡的不合法
+// 組合是實作者的錯，panic 在載入階段就會炸出來；sexFromOK 用於執行期
+// 處理 Input，那裡的不合法組合是呼叫方給的，不該讓函式庫掛掉。
+//
+// Input 的 DayStem 與 DayBranch 是兩個獨立欄位，湊出不合法的組合很容易；
+// 此時空亡與魁罡不產生命中，其餘神煞不受影響。
+func sexFromOK(stem ganzhi.StemIndex, branch ganzhi.BranchIndex) (ganzhi.SexagenaryIndex, bool) {
 	for x := 0; x < ganzhi.SexagenaryCount; x++ {
 		if x%ganzhi.StemCount == int(stem) && x%ganzhi.BranchCount == int(branch) {
-			return ganzhi.SexagenaryIndex(x)
+			return ganzhi.SexagenaryIndex(x), true
 		}
 	}
-	panic("shensha: stem and branch have opposite polarity")
+	return 0, false
 }
 
 // eatGod 食神：我生者而同陰陽。甲之食神為丙、癸之食神為乙。
@@ -497,8 +513,12 @@ func hongLuan(year ganzhi.BranchIndex) ganzhi.BranchIndex {
 // 身行旺地貴無倫」，並自按「此格俱用辰戌，獨天干少異，內庚辰二日既曰日德
 // 又曰魁罡」。四日明列，不存版本之爭。
 //
-// 不設 SubjectOnly：同章另云「魁罡四日最為先，**疊疊相逢掌大權**」，
-// 明白肯定四柱重見有義，與十惡大敗、四廢只論日柱者不同。
+// 全章以日柱立論：「魁罡四日最為先」「戊戌日無財不貴⋯若魁罡重疊有情，
+// 富貴兩全」「日主獨逢沖尅重」，末尾二例（庚午 丁亥 戊戌 丙辰、
+// 丁亥 癸丑 庚戌 戊寅）魁罡皆在日柱，作者稱之為「魁罡日」。
+//
+// 故「疊疊相逢」的前提是日柱已為魁罡，非任一柱各自成立——初版讀成後者，
+// 於日柱非魁罡的盤上仍報出他柱，見決策日誌 D-59。
 var kuiGangSex = []ganzhi.SexagenaryIndex{
 	sexFrom(8, 4),  // 壬辰
 	sexFrom(6, 10), // 庚戌
@@ -571,4 +591,14 @@ var fuXingShenFeng = [ganzhi.StemCount][]ganzhi.BranchIndex{
 	7: {5},    // 辛：巳
 	8: {4},    // 壬：辰
 	9: {1},    // 癸：丑
+}
+
+// isKuiGang 該干支是否為魁罡四組之一
+func isKuiGang(sex ganzhi.SexagenaryIndex) bool {
+	for _, x := range kuiGangSex {
+		if sex == x {
+			return true
+		}
+	}
+	return false
 }

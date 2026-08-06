@@ -42,7 +42,7 @@ const (
 	TopicSuiJun
 	// TopicJinShen 金神要不要加「六甲日」的限制
 	TopicJinShen
-	// TopicKuiGang 魁罡只論日柱，還是四柱重見皆論
+	// TopicKuiGang 魁罡的重疊要不要呈現。兩派都以日柱為前提。
 	TopicKuiGang
 
 	topicCount
@@ -157,10 +157,16 @@ const (
 
 	// ── 魁罡 ──
 
-	// KuiGangAllPillars 四柱重見皆論。《三命通會》「魁罡四日最為先，
-	// 疊疊相逢掌大權」「魁罡四柱日多同」，明白肯定重見有義，故為預設。
-	KuiGangAllPillars
-	// KuiGangDayOnly 只論日柱。同章稱其為「魁罡四日」，市面實作多數如此。
+	// KuiGangDayThenRepeat 日柱須為魁罡，成立後他柱的同組干支一併標為重疊。
+	//
+	// 《三命通會》全章以日柱立論：「魁罡四日最為先」「戊戌日無財不貴⋯
+	// 若魁罡重疊有情，富貴兩全」「日主獨逢沖尅重」，末尾所舉二例
+	// （庚午 丁亥 **戊戌** 丙辰、丁亥 癸丑 **庚戌** 戊寅）魁罡皆在日柱，
+	// 且作者稱之為「魁罡日」。「疊疊相逢」說的是日柱已為魁罡而他柱又見，
+	// 非任一柱各自成立。故為預設。
+	KuiGangDayThenRepeat
+	// KuiGangDayOnly 只論日柱，他柱的魁罡干支不標。同章稱其為「魁罡四日」，
+	// 市面實作多數如此。與預設的差別僅在要不要呈現重疊。
 	KuiGangDayOnly
 
 	sectCount
@@ -178,7 +184,7 @@ var topicSects = [topicCount][]Sect{
 	TopicGouJiao:    {GouJiaoFrontIsGou, GouJiaoFrontIsJiao},
 	TopicSuiJun:     {SuiJunShenFeng, SuiJunDongWei},
 	TopicJinShen:    {JinShenAnyDay, JinShenJiaDayOnly},
-	TopicKuiGang:    {KuiGangAllPillars, KuiGangDayOnly},
+	TopicKuiGang:    {KuiGangDayThenRepeat, KuiGangDayOnly},
 }
 
 // topicKinds 各主題影響哪些神煞。空表示影響面不限於特定幾個（基準之爭）。
@@ -286,6 +292,8 @@ func (o Options) sect(t Topic) Sect {
 // 六爻取世爻。魁罡的兩派之爭即在此：只論日柱，還是四柱重見皆論。
 func (o Options) SubjectOnly(k Kind) bool {
 	if k == KuiGang {
+		// 兩派都要求日柱為魁罡（該前提在 selfHit 內判定）；此處只管
+		// 日柱以外的重疊要不要留下
 		return o.sect(TopicKuiGang) == KuiGangDayOnly
 	}
 	return k.SubjectOnly()
