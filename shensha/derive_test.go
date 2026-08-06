@@ -274,7 +274,10 @@ func TestAnLuAgainstClassics(t *testing.T) {
 	}
 }
 
-// TestFeiRenIsBladeClash 飛刃即羊刃之對衝。此為取法本身，非另一張表。
+// TestFeiRenIsBladeClash 飛刃即羊刃之對衝。
+//
+// 《三命通會·論羊刃》明言「所以祿前一辰為羊刃，對衝為飛刃」——取法本身
+// 即如此，非另一張表。
 func TestFeiRenIsBladeClash(t *testing.T) {
 	want := [ganzhi.StemCount]ganzhi.BranchIndex{you, xu, zi, chou, zi, chou, mao, chen, wu, wei}
 	for s, w := range want {
