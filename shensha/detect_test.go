@@ -514,3 +514,32 @@ func TestInconsistentInputDoesNotPanic(t *testing.T) {
 	}
 	t.Logf("測過 %d 組陰陽不合的干支，皆未 panic", checked)
 }
+
+// TestDetectSurvivesOutOfRangeInput Input 帶越界值時不得 panic。
+//
+// Input 的欄位全是具名索引型別，但 Go 不阻止呼叫方塞 200 進去。先前
+// 每個使用點各自寫 %ganzhi.StemCount 防禦，結果漏了天乙貴人那一處
+// （yangNoble[stem]），越界輸入即 panic——二十個地方記得防禦，漏一個
+// 就破功。現改為在 baseStem／baseBranch 一處正規化。
+func TestDetectSurvivesOutOfRangeInput(t *testing.T) {
+	vals := []int{0, 1, 9, 11, 12, 59, 60, 200, 255}
+	scan := []ganzhi.SexagenaryIndex{0, 17, 21, 46, 200}
+	var n int
+	for _, a := range vals {
+		for _, b := range vals {
+			in := Input{
+				DayStem: ganzhi.StemIndex(a), YearStem: ganzhi.StemIndex(b),
+				DayBranch: ganzhi.BranchIndex(b), YearBranch: ganzhi.BranchIndex(a),
+				MonthBranch: ganzhi.BranchIndex(a), Annual: ganzhi.SexagenaryIndex(b),
+				HasAnnual: true, YearSound: ganzhi.SoundIndex(a),
+			}
+			for _, tp := range Topics() {
+				for _, sc := range tp.Sects() {
+					Detect(in, scan, Default().With(sc))
+					n++
+				}
+			}
+		}
+	}
+	t.Logf("跑過 %d 組越界輸入，無 panic", n)
+}

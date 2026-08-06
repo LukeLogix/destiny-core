@@ -61,7 +61,9 @@ func (c *Chart) detectShenSha(opt Options) {
 	// 讓「太歲」每年命中流年支自己，是套套邏輯而非資訊。
 	dynamic := opt.ShenSha
 	dynamic.Exclude = withExcluded(opt.ShenSha.Exclude, func(k shensha.Kind) bool {
-		return opt.ShenSha.SubjectOnly(k) || k.Category() == shensha.CategoryAnnual
+		// 金神限時柱，大運流年柱都不是時柱
+		return opt.ShenSha.SubjectOnly(k) || k == shensha.JinShen ||
+			k.Category() == shensha.CategoryAnnual
 	})
 
 	for i := range c.Fortunes {
@@ -91,13 +93,27 @@ func subjectAtDay(hits []shensha.Hit, opt shensha.Options) []shensha.Hit {
 		if opt.SubjectOnly(h.Kind) && h.At != dayPillarIndex {
 			continue
 		}
+		// 金神典籍作「止有三時」——《三命通會》〈金神〉「金神者破敗之神，
+		// 即的煞，止有三時，乃癸酉、己巳、乙丑」，《淵海子平》〈論金神〉
+		// 與《神峰通考》同，淵海的詩訣更作「甲午時上見金神」，神峰所舉
+		// 命例（丁亥 癸丑 己未 癸酉）金神亦在時柱。
+		//
+		// 「限於時柱」在 shensha 沒有中性的說法——主體有（八字日柱、
+		// 六爻世爻），時柱沒有。故不硬造抽象，整條限制留在這一層，
+		// 那本來就是位置語意該待的地方。
+		if h.Kind == shensha.JinShen && h.At != hourPillarIndex {
+			continue
+		}
 		out = append(out, h)
 	}
 	return out
 }
 
-// dayPillarIndex 日柱在 Chart.Pillars 中的序位
-const dayPillarIndex = 2
+// 柱位序號。位置語意只存在於本層——shensha 只報構成。
+const (
+	dayPillarIndex  = 2
+	hourPillarIndex = 3
+)
 
 // withExcluded 在既有排除清單上再排除符合條件者，不動原切片。
 func withExcluded(base []shensha.Kind, drop func(shensha.Kind) bool) []shensha.Kind {

@@ -161,18 +161,30 @@ func basesFor(k Kind, opt Options, out *[maxBases]Basis) int {
 	return 1
 }
 
-// baseBranch 取指定基準的地支值
+// baseBranch 取指定基準的地支值。
+//
+// 在此正規化，使用點不再各自取模——Input 的欄位是呼叫方給的，越界值
+// 進得來。先前每個使用點各自寫 %ganzhi.StemCount 防禦，結果漏了一個
+// （天乙貴人的 yangNoble[stem]），越界輸入即 panic。把不變式收在一處，
+// 比在二十個地方記得防禦可靠。
 func (in Input) baseBranch(b Basis) ganzhi.BranchIndex {
+	var v ganzhi.BranchIndex
 	switch b {
 	case BasisYearBranch:
-		return in.YearBranch
+		v = in.YearBranch
 	case BasisMonthBranch:
-		return in.MonthBranch
+		v = in.MonthBranch
 	case BasisAnnual:
-		return in.Annual.Branch()
+		v = in.Annual.Branch()
 	default:
-		return in.DayBranch
+		v = in.DayBranch
 	}
+	return ganzhi.BranchIndex(int(v) % ganzhi.BranchCount)
+}
+
+// month 月支，已正規化。天德、月德、德秀、四廢、天赦、四時天喜皆以此為基準。
+func (in Input) month() ganzhi.BranchIndex {
+	return ganzhi.BranchIndex(int(in.MonthBranch) % ganzhi.BranchCount)
 }
 
 // basePillar 取指定基準的整組干支。空亡須知該柱屬哪一旬，拆開的干與支
@@ -184,12 +196,13 @@ func (in Input) basePillar(b Basis) (ganzhi.SexagenaryIndex, bool) {
 	return sexFromOK(in.DayStem, in.DayBranch)
 }
 
-// baseStem 取指定基準的天干值
+// baseStem 取指定基準的天干值，已正規化。理由同 baseBranch。
 func (in Input) baseStem(b Basis) ganzhi.StemIndex {
+	v := in.DayStem
 	if b == BasisYearStem {
-		return in.YearStem
+		v = in.YearStem
 	}
-	return in.DayStem
+	return ganzhi.StemIndex(int(v) % ganzhi.StemCount)
 }
 
 // targetsFor 算出該神煞在此基準下應命中的地支，回傳寫入的個數。
@@ -226,11 +239,11 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 
 	// ── 日干系 ──
 	case LuShen:
-		return one(luBranch[int(in.baseStem(b))%ganzhi.StemCount])
+		return one(luBranch[in.baseStem(b)])
 	case JinYu:
 		return one(offsetFromLu(in.baseStem(b), 2))
 	case WenChangGuiRen:
-		return one(wenChangBranch[int(in.baseStem(b))%ganzhi.StemCount])
+		return one(wenChangBranch[in.baseStem(b)])
 
 	case YangRen, FeiRen:
 		stem := in.baseStem(b)
@@ -250,17 +263,17 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 
 	case TaiJiGuiRen:
 		n := 0
-		for _, br := range taiJiTargets[int(in.baseStem(b))%ganzhi.StemCount] {
+		for _, br := range taiJiTargets[in.baseStem(b)] {
 			out[n] = target{branch: br}
 			n++
 		}
 		return n
 
 	case TianChuGuiRen:
-		return one(tianChuBranch[int(in.baseStem(b))%ganzhi.StemCount])
+		return one(tianChuBranch[in.baseStem(b)])
 
 	case HongYan:
-		return one(hongYanBranch[int(in.baseStem(b))%ganzhi.StemCount])
+		return one(hongYanBranch[in.baseStem(b)])
 
 	case FuXingGuiRen:
 		tbl := &fuXingBranches
@@ -268,7 +281,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 			tbl = &fuXingShenFeng
 		}
 		n := 0
-		for _, br := range tbl[int(in.baseStem(b))%ganzhi.StemCount] {
+		for _, br := range tbl[in.baseStem(b)] {
 			out[n] = target{branch: br}
 			n++
 		}
@@ -291,7 +304,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return 2
 
 	case AnLu:
-		return one(liuHe(luBranch[int(in.baseStem(b))%ganzhi.StemCount]))
+		return one(liuHe(luBranch[in.baseStem(b)]))
 	case PanAn:
 		return one((trinityAt(in.baseBranch(b), ganzhi.Sick) + 1) % ganzhi.BranchCount)
 
@@ -338,7 +351,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return one(anJinTarget(in.baseBranch(b)))
 
 	case TianDe:
-		v := tianDeByMonth[int(in.MonthBranch)%ganzhi.BranchCount]
+		v := tianDeByMonth[in.month()]
 		if v >= 100 {
 			out[0] = target{branch: ganzhi.BranchIndex(v - 100)}
 		} else {
@@ -348,7 +361,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 
 	case TianDeHe:
 		// 天德之五合。天德落於地支的四個月無合可取。
-		v := tianDeByMonth[int(in.MonthBranch)%ganzhi.BranchCount]
+		v := tianDeByMonth[in.month()]
 		if v >= 100 {
 			return 0
 		}
@@ -356,15 +369,15 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return 1
 
 	case YueDe:
-		out[0] = target{stem: yueDeStem(in.MonthBranch), matchStem: true}
+		out[0] = target{stem: yueDeStem(in.month()), matchStem: true}
 		return 1
 	case YueDeHe:
-		out[0] = target{stem: hePartner(yueDeStem(in.MonthBranch)), matchStem: true}
+		out[0] = target{stem: hePartner(yueDeStem(in.month())), matchStem: true}
 		return 1
 
 	case DeXiu:
 		// 〈論徳秀〉依局分德、秀兩組天干，各以 Variant 標明
-		g := deXiuStems[int(in.MonthBranch)%4]
+		g := deXiuStems[int(in.month())%4]
 		half := len(g) / 2
 		for i, x := range g {
 			v := VariantDe
@@ -389,7 +402,7 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return one(wrap(int(in.Annual.Branch()) + n))
 
 	case TianXiSiShi:
-		return one(tianXiSiShi[directionGroup(in.MonthBranch)])
+		return one(tianXiSiShi[directionGroup(in.month())])
 
 	case TianYiGuiRen:
 		stem := in.baseStem(b)
@@ -490,7 +503,7 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input, opt Options) (Variant
 		return VariantNone, isKuiGang(sex)
 
 	case TianShe:
-		return VariantNone, sex == tianSheSex[directionGroup(in.MonthBranch)]
+		return VariantNone, sex == tianSheSex[directionGroup(in.month())]
 
 	case JinShen:
 		// 《三命通會》另加「此格六甲日為主」，《淵海子平》與《神峰通考》
@@ -507,7 +520,7 @@ func selfHit(k Kind, sex ganzhi.SexagenaryIndex, in Input, opt Options) (Variant
 
 	case SiFei:
 		// 該季無氣之五行，且干支同屬該五行——恰好是原文那八組
-		e := siFeiElement[directionGroup(in.MonthBranch)]
+		e := siFeiElement[directionGroup(in.month())]
 		return VariantNone, sex.Stem().Element() == e && sex.Branch().Element() == e
 	}
 	return VariantNone, false

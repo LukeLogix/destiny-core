@@ -196,3 +196,49 @@ func checkDynamicHit(t *testing.T, h shensha.Hit, step, year int) {
 			step, where, h.Kind.ID())
 	}
 }
+
+// TestJinShenOnlyAtHour 金神只論時柱。
+//
+// 典籍作「止有三時」——《三命通會》〈金神〉、《淵海子平》〈論金神〉、
+// 《神峰通考》三本皆然。神峰所舉命例丁亥 癸丑 己未 癸酉，金神在時柱癸酉。
+//
+// 初版把它當成任一柱皆可，與魁罡那次（D-59）是同一類誤讀：原文的「日」
+// 「時」是取法的一部分，不是「怎麼用」的慣例。
+func TestJinShenOnlyAtHour(t *testing.T) {
+	opt := Default()
+	opt.ShenSha.Include = []shensha.Kind{shensha.JinShen}
+
+	// 1953-01-06 巳時 → 需找一張時柱為癸酉／己巳／乙丑的盤。
+	// 改以掃描既有命例的方式驗證契約，不硬編生辰。
+	for _, tc := range []struct{ y, mo, d, h, mi int }{
+		{1990, 5, 20, 10, 30}, {1988, 7, 31, 19, 46},
+		{1953, 1, 6, 9, 30}, {1975, 11, 3, 17, 20}, {2001, 3, 14, 5, 40},
+	} {
+		c := mustCompute(t, birthAt(tc.y, tc.mo, tc.d, tc.h, tc.mi), opt)
+		for _, h := range c.ShenSha {
+			if h.Kind == shensha.JinShen && h.At != hourPillarIndex {
+				t.Errorf("%d-%02d-%02d：金神落在第 %d 柱，典籍限時柱",
+					tc.y, tc.mo, tc.d, h.At)
+			}
+		}
+	}
+
+	// 動態柱一律不該有金神——大運流年柱都不是時柱
+	dyn := Default()
+	dyn.IncludeDynamicShenSha = true
+	c := mustCompute(t, birthAt(1990, 5, 20, 10, 30), dyn)
+	for i, f := range c.Fortunes {
+		for _, h := range f.ShenSha {
+			if h.Kind == shensha.JinShen {
+				t.Errorf("第 %d 步大運出現金神——大運柱不是時柱", i)
+			}
+		}
+		for j, y := range f.Years {
+			for _, h := range y.ShenSha {
+				if h.Kind == shensha.JinShen {
+					t.Errorf("第 %d 步第 %d 年出現金神", i, j)
+				}
+			}
+		}
+	}
+}
