@@ -11,10 +11,13 @@ import (
 //
 // 神煞多數命中地支，但天德、月德、德秀等落在天干，故兩者皆須支援。
 type target struct {
-	branch    ganzhi.BranchIndex
-	stem      ganzhi.StemIndex
-	matchStem bool
-	variant   Variant
+	branch ganzhi.BranchIndex
+	stem   ganzhi.StemIndex
+	// sex 整組干支。暗祿的原文給的是完整干支，只比對地支會過寬。
+	sex         ganzhi.SexagenaryIndex
+	matchStem   bool
+	matchPillar bool
+	variant     Variant
 }
 
 // Detect 位置無關的神煞偵測。呼叫方自行賦予 scan 的位置語意。
@@ -62,7 +65,10 @@ func Detect(in Input, scan []ganzhi.SexagenaryIndex, opt Options) []Hit {
 			for _, t := range targets[:nt] {
 				for i, sex := range scan {
 					hit := sex.Branch() == t.branch
-					if t.matchStem {
+					switch {
+					case t.matchPillar:
+						hit = sex == t.sex
+					case t.matchStem:
 						hit = sex.Stem() == t.stem
 					}
 					if hit {
@@ -304,7 +310,8 @@ func targetsFor(k Kind, b Basis, in Input, opt Options, out *[maxTargets]target)
 		return 2
 
 	case AnLu:
-		return one(liuHe(luBranch[in.baseStem(b)]))
+		out[0] = target{sex: anLuSex[in.baseStem(b)], matchPillar: true}
+		return 1
 	case PanAn:
 		return one((trinityAt(in.baseBranch(b), ganzhi.Sick) + 1) % ganzhi.BranchCount)
 

@@ -230,29 +230,46 @@ func TestTaiJiAgainstClassics(t *testing.T) {
 	}
 }
 
-// TestAnLuIsLuHarmony 暗祿即祿位之六合。
+// TestAnLuAgainstClassics 暗祿對照《五行精紀》〈暗祿格〉。
 //
-// 手上只有〈暗祿格〉的「甲人辛亥暗中祿」一句可直接對照：甲祿在寅，寅亥六合，
-// 故甲之暗祿在亥。餘九干在語料中查無逐條列舉，此處只釘住機制的一致性——
-// 十干皆為 liuHe(祿)，且甲那一項與原文相符。
+// 原文：「甲人辛亥暗中祿，乙要隆昌甲戌推，丙見戊申尊重處，丁逢辛未福神威，
+// 戊人若見壬申好，己若繁華乙未隨，庚意多權須己巳，辛來喜合壬辰輝，
+// 壬公元用丙寅輔，癸命生未巳丑時，**此是上清暗合祿**，不因師指若何知」。
 //
-// 不補其餘九干的「典籍值」：憑印象寫下的口訣曾在此把癸誤作卯，
-// 那實為天乙貴人的「壬癸兔蛇藏」。查不到就不寫，勝過寫個看起來有據的錯誤。
-func TestAnLuIsLuHarmony(t *testing.T) {
-	if got := liuHe(luBranch[0]); got != hai {
-		t.Errorf("甲之暗祿推導得 %s，〈暗祿格〉作亥", branchName[got])
+// 取法即末句自述的「暗合祿」：以五虎遁取祿位所在的干支，其天干取五合、
+// 地支取六合。原文明列九干，推導逐一吻合；癸推得己丑，可解釋「癸命生
+// 未巳丑時」中的丑。
+//
+// 本測試同時釘住一項曾經的錯誤：初版只取地支（祿之六合），於甲日見任何
+// 亥皆報。原文給的是完整干支——只讀到「亥」就實作，與魁罡、金神是同一
+// 類疏漏，見 D-63。
+func TestAnLuAgainstClassics(t *testing.T) {
+	want := [ganzhi.StemCount][2]int{
+		{7, hai},  // 甲：辛亥
+		{0, xu},   // 乙：甲戌
+		{4, shen}, // 丙：戊申
+		{7, wei},  // 丁：辛未
+		{8, shen}, // 戊：壬申
+		{1, wei},  // 己：乙未
+		{5, si},   // 庚：己巳
+		{8, chen}, // 辛：壬辰
+		{2, yin},  // 壬：丙寅
+		{5, chou}, // 癸：己丑（推導，原文該句疑有脫誤）
 	}
-	for s := 0; s < ganzhi.StemCount; s++ {
-		lu := luBranch[s]
-		an := liuHe(lu)
-		// 六合為對合關係，合回去須得原位
-		if liuHe(an) != lu {
-			t.Errorf("%s：祿 %s 之合為 %s，再合卻得 %s，六合不對稱",
-				stemName[s], branchName[lu], branchName[an], branchName[liuHe(an)])
+	for st, w := range want {
+		exp := sexFrom(ganzhi.StemIndex(w[0]), ganzhi.BranchIndex(w[1]))
+		if got := anLuSex[st]; got != exp {
+			t.Errorf("%s 暗祿推導得 %s%s，原文為 %s%s", stemName[st],
+				stemName[got.Stem()], branchName[got.Branch()],
+				stemName[w[0]], branchName[w[1]])
 		}
-		if int(lu)+int(an) != 13 && int(lu)+int(an) != 1 {
-			t.Errorf("%s：%s 與 %s 之和為 %d，六合須為子丑、寅亥⋯之配",
-				stemName[s], branchName[lu], branchName[an], int(lu)+int(an))
+	}
+
+	// 地支必為祿之六合——初版只做到這一層，是必要條件而非充分條件
+	for st := 0; st < ganzhi.StemCount; st++ {
+		if anLuSex[st].Branch() != liuHe(luBranch[st]) {
+			t.Errorf("%s 暗祿的地支 %s 非祿 %s 之六合", stemName[st],
+				branchName[anLuSex[st].Branch()], branchName[luBranch[st]])
 		}
 	}
 }

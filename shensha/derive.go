@@ -157,8 +157,7 @@ func hePartner(s ganzhi.StemIndex) ganzhi.StemIndex {
 
 // ── 地支六合 ──
 //
-// 子丑、寅亥、卯戌、辰酉、巳申、午未。暗祿即祿位之六合——
-// 〈暗祿格〉「甲人辛亥暗中祿」，甲祿在寅，寅與亥合。
+// 子丑、寅亥、卯戌、辰酉、巳申、午未。
 func liuHe(b ganzhi.BranchIndex) ganzhi.BranchIndex {
 	return ganzhi.BranchIndex((13 - int(b)) % ganzhi.BranchCount)
 }
@@ -605,3 +604,43 @@ func isKuiGang(sex ganzhi.SexagenaryIndex) bool {
 	}
 	return false
 }
+
+// ── 五虎遁：年干（或日干）起寅月之干 ──
+//
+// 甲己丙寅、乙庚戊寅、丙辛庚寅、丁壬壬寅、戊癸甲寅。即寅月干為
+// (干 mod 5) × 2 + 2。與 hourStemStart 的五鼠遁同構，只是起點差兩位。
+func monthStemStart(s ganzhi.StemIndex) ganzhi.StemIndex {
+	return ganzhi.StemIndex(((int(s)%5)*2 + 2) % ganzhi.StemCount)
+}
+
+// monthStemAt 該干遁至指定月支的干。寅為首，故自寅起算。
+func monthStemAt(s ganzhi.StemIndex, b ganzhi.BranchIndex) ganzhi.StemIndex {
+	n := (int(b) - 2 + ganzhi.BranchCount) % ganzhi.BranchCount
+	return ganzhi.StemIndex((int(monthStemStart(s)) + n) % ganzhi.StemCount)
+}
+
+// ── 暗祿 ──
+//
+// 《五行精紀》〈暗祿格〉：「甲人辛亥暗中祿，乙要隆昌甲戌推，丙見戊申尊重處，
+// 丁逢辛未福神威，戊人若見壬申好，己若繁華乙未隨，庚意多權須己巳，
+// 辛來喜合壬辰輝，壬公元用丙寅輔，癸命生未巳丑時，**此是上清暗合祿**」。
+//
+// 原文給的是完整干支，不只地支——取法即末句自述的「暗合祿」：以五虎遁
+// 取祿位所在的干支，其天干取五合、地支取六合。
+//
+//	甲 → 五虎遁丙寅（祿在寅）→ 丙合辛、寅合亥 → 辛亥
+//	癸 → 五虎遁甲子（祿在子）→ 甲合己、子合丑 → 己丑
+//
+// 原文明列九干，推導逐一吻合；癸推得己丑，正可解釋「癸命生未巳丑時」
+// 一句中的丑。
+//
+// 初版只取地支（祿之六合），於甲日見任何亥皆報，過寬。見決策日誌 D-63。
+var anLuSex = func() [ganzhi.StemCount]ganzhi.SexagenaryIndex {
+	var out [ganzhi.StemCount]ganzhi.SexagenaryIndex
+	for i := 0; i < ganzhi.StemCount; i++ {
+		st := ganzhi.StemIndex(i)
+		lu := luBranch[i]
+		out[i] = sexFrom(hePartner(monthStemAt(st, lu)), liuHe(lu))
+	}
+	return out
+}()
