@@ -7,35 +7,17 @@ on:
 
 jobs:
   test:
-    # ⚠️ 本 repo 是 public，pull_request 一律走 GitHub 託管 runner。
+    # 本 repo 是 public，CI 一律跑 GitHub 託管的 runner。
     #
-    # self-hosted runner 位於家用內網，而 public repo 的 fork PR 等同讓任意人
-    # 在該機器上執行程式碼——同一台 pve-ci 還放著其他 repo 的工作目錄。
-    # public repo 無法設定 fork PR 的核准政策（API 回 422），故只能從 runs-on 隔離。
-    #
-    # push 到 main 才用自架 runner，由 repo variable CI_RUNNER 決定（同 msgmesh-platform 慣例），
-    # 未設定時退回 ubuntu-latest。目前值：["self-hosted","pve-ci"] → CT109 的 pve-ci-destiny。
-    runs-on: ${{ github.event_name == 'push' && fromJSON(vars.CI_RUNNER || '["ubuntu-latest"]') || fromJSON('["ubuntu-latest"]') }}
+    # 2026-10-07 以前，push 到 main 會改用自架 runner（由 repo variable CI_RUNNER
+    # 決定），pull_request 才走託管。那樣的隔離只寫在這個檔裡，而 pull_request
+    # 觸發時用的是 PR 自己帶的 workflow 檔——PR 可以把 runs-on 改掉。public repo
+    # 不該掛著自架 runner，所以整個移除：runner 已取消註冊、CI_RUNNER 已刪除，
+    # 這裡不再讀它。
+    runs-on: ubuntu-latest
     steps:
-      # CI_RUNNER 是 repo variable，不在 git 裡——repo 重建或誤刪時
-      # runs-on 會靜靜回落到 ubuntu-latest，CI 照樣全綠、額度繼續燒。
-      # 這一步讓那種漂移變成紅燈而不是無聲。
-      #
-      # 刻意只比對前綴、不印出任何主機或網路資訊：本 repo 是 public，
-      # Actions 日誌任何人可讀，workflow 裡絕不可出現 env / hostname -I /
-      # ip addr / docker info 這類會把內網位址寫進公開日誌的指令。
-      - name: 確認跑在預期的 runner 上
-        if: github.event_name == 'push'
-        run: |
-          case "$RUNNER_NAME" in
-            pve-ci*) echo "✅ 自架 runner" ;;
-            *) echo "❌ 預期自架 runner，實際並非——CI_RUNNER variable 可能已遺失"; exit 1 ;;
-          esac
-
       - uses: actions/checkout@v4
 
-      # pve-ci 沒有系統層級的 Go，靠這步取得；首次執行後會留在 runner 的
-      # tool cache（_work/_tool/go/），之後近乎零成本。與 msgmesh-platform 一致。
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
