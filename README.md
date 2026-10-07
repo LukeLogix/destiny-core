@@ -162,7 +162,7 @@ func main() {
 ./ci-local.sh    # 與 CI 同一組檢查：格式、vet、測試、零依賴、交叉驗證
 ```
 
-CI 跑在自架 runner 上（`.github/workflows/ci.yml`）。
+CI 跑在 GitHub 託管的 runner 上（`.github/workflows/ci.yml`）。
 
 ## 計算範圍
 
